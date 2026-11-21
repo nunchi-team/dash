@@ -290,7 +290,7 @@ tfoot td { font-weight: 700; background: var(--panel); }
     var raw = {}; d.raw.forEach(function (r) { raw[r.name] = r; });
     var lines = {}; d.lines.forEach(function (l) { (lines[key(l.recipe, l.version)] = lines[key(l.recipe, l.version)] || []).push(l); });
     d.rawMap = raw; d.lineMap = lines;
-    d.cards = d.cards.filter(function (c) { return lines[key(c.recipe, c.version)]; });
+    d.cards = d.cards.filter(function (c) { return lines[key(c.recipe, c.version)] && c.status !== 'Архив'; });
     S.data = d;
     $('stamp').textContent = 'Данные: ' + d.updated;
     S.plan = store.get('nunchi_plan', []).filter(function (p) { return lines[key(p.recipe, p.version)]; });
@@ -305,7 +305,10 @@ tfoot td { font-weight: 700; background: var(--panel); }
       return { name: l.ingredient, perL: l.g, g: l.g * water, price: m.price, stockG: m.stock * 1000, cat: m.cat, note: l.note };
     });
   }
-  function out(card, water) { var l = water * card.yieldPerL * (1 - LOSS); return { l: l, bottles: Math.floor(l / BOTTLE + 1e-9) }; }
+  function btl(card) { return (card.bottleMl || 750) / 1000; }
+  function btlName(card) { return fmt(card.bottleMl || 750, 0) + ' мл'; }
+  function rtd(card) { return !card.waterMl; }
+  function out(card, water) { var l = water * card.yieldPerL * (1 - LOSS); return { l: l, bottles: Math.floor(l / btl(card) + 1e-9) }; }
 
   /* ---------- список ---------- */
   function renderList() {
@@ -333,17 +336,18 @@ tfoot td { font-weight: 700; background: var(--panel); }
       return el('button', { cls: 'card', style: '--cc:' + cat.c, onclick: function () { openTTK(c); } }, [
         el('div', { cls: 'row' }, [el('span', { style: 'display:inline-flex;gap:6px;align-items:center' }, [el('span', { cls: 'dot', style: 'background:' + cat.c }), c.category]), statusPill(c.status)]),
         el('div', { cls: 't', text: c.recipe }),
-        el('div', { cls: 'row' }, [el('span', { text: c.version }), el('span', { cls: 'num', text: fmt(c.brix, 1) + ' Brix · 1:' + fmt(c.waterMl / c.cordialMl, 0) })]),
+        el('div', { cls: 'row' }, [el('span', { text: c.version }), el('span', { cls: 'num', text: fmt(c.brix, 1) + ' Brix · ' + (rtd(c) ? 'готовый · ' + btlName(c) : '1:' + fmt(c.waterMl / c.cordialMl, 0)) })]),
         balanceBar(c, true)
       ]);
     }));
   }
   function statusPill(s) { return el('span', { cls: 'pill ' + (s === 'Актив' ? 'ok' : s === 'R&D' ? 'rd' : 'mute'), text: s || '—' }); }
-  function balanceState(c) { var cat = catOf(c.category); if (cat.lo == null || !c.index) return null; return c.index < cat.lo ? 'Кисло' : c.index > cat.hi ? 'Сладко' : 'В балансе'; }
+  function balanceState(c) { var cat = catOf(c.category); if (cat.lo == null || !c.index || !c.waterMl) return null; return c.index < cat.lo ? 'Кисло' : c.index > cat.hi ? 'Сладко' : 'В балансе'; }
   function balanceBar(c, compact) {
+    if (!c.waterMl) return el('div');
     var cat = catOf(c.category), lo = 10, hi = 50, pct = function (v) { return Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100)); };
     var tr = el('div', { cls: 'track' });
-    if (cat.lo != null) tr.appendChild(el('div', { cls: 'band', style: 'left:' + pct(cat.lo) + '%;width:' + (pct(cat.hi) - pct(cat.lo)) + '%;background:' + cat.c }));
+    if (cat.lo != null && c.waterMl) tr.appendChild(el('div', { cls: 'band', style: 'left:' + pct(cat.lo) + '%;width:' + (pct(cat.hi) - pct(cat.lo)) + '%;background:' + cat.c }));
     if (c.index) tr.appendChild(el('div', { cls: 'pin', style: 'left:' + pct(c.index) + '%;background:' + cat.c }));
     var st = balanceState(c);
     return el('div', { cls: 'balance' }, [el('span', { text: compact ? 'кисло' : 'Кисло' }), tr, el('span', { text: compact ? 'сладко' : 'Сладко' }),
@@ -358,16 +362,16 @@ tfoot td { font-weight: 700; background: var(--panel); }
     store.set('nunchi_w_' + key(c.recipe, c.version), water);
     $('ttkTags').replaceChildren(el('span', { cls: 'pill mute' }, [el('span', { cls: 'dot', style: 'background:' + cat.c }), c.category]), el('span', { cls: 'pill mute', text: c.version }), statusPill(c.status));
     $('ttkName').textContent = c.recipe;
-    $('ttkDesc').textContent = c.description || ('Кордиал ' + fmt(c.brix, 1) + ' Brix, разведение ' + fmt(c.cordialMl, 0) + ' мл на ' + fmt(c.waterMl, 0) + ' мл воды.');
+    $('ttkDesc').textContent = c.description || (rtd(c) ? 'Готовый напиток ' + fmt(c.brix, 1) + ' Brix, бутылка ' + btlName(c) + '.' : 'Кордиал ' + fmt(c.brix, 1) + ' Brix, разведение ' + fmt(c.cordialMl, 0) + ' мл на ' + fmt(c.waterMl, 0) + ' мл воды.');
     var o = out(c, water), rows = need(c, water);
     var cost = rows.reduce(function (s, r) { return s + r.g / 1000 * (r.price || 0); }, 0);
     var unpriced = rows.filter(function (r) { return !r.price; }).length;
     var portions = o.l * 1000 / c.cordialMl;
     $('kpis').replaceChildren(
-      kpi('Выход кордиала', fmt(o.l, 0) + ' л', fmt(c.yieldPerL, 3) + ' л с 1 л воды'),
-      kpi('Бутылок 0,75', fmt(o.bottles, 0), fmt(portions, 0) + ' порций по ' + fmt(c.cordialMl, 0) + ' мл'),
-      kpi('Brix кордиала', fmt(c.brix, 1), 'план ' + fmt(c.brixPlan, 0)),
-      kpi('В стакане', fmt(c.glassBrix, 1) + ' Bx', 'кислотность ' + fmt(c.glassAcid, 2) + ' г/л'),
+      kpi(rtd(c) ? 'Выход напитка' : 'Выход кордиала', fmt(o.l, 0) + ' л', fmt(c.yieldPerL, 3) + ' л с 1 л воды'),
+      kpi('Бутылок ' + btlName(c), fmt(o.bottles, 0), rtd(c) ? 'с учётом 2% потерь' : fmt(portions, 0) + ' порций по ' + fmt(c.cordialMl, 0) + ' мл'),
+      kpi(rtd(c) ? 'Brix напитка' : 'Brix кордиала', fmt(c.brix, 1), 'план ' + fmt(c.brixPlan, 1)),
+      kpi(rtd(c) ? 'Brix и кислотность' : 'В стакане', fmt(c.glassBrix, 1) + ' Bx', 'кислотность ' + fmt(c.glassAcid, 2) + ' г/л'),
       kpi('Сырьё на партию', fmt(cost, 0) + ' ₽', unpriced ? 'без цены: ' + unpriced + ' поз.' : 'все цены заполнены')
     );
     $('ttkBalance').replaceChildren(balanceBar(c, false));
@@ -444,7 +448,7 @@ tfoot td { font-weight: 700; background: var(--panel); }
       if (ord > 1e-6) { toOrder++; sum += ord / 1000 * (m.price || 0); }
       return { nm: nm, need: total[nm], have: have, ord: ord, price: m.price, who: shortBy[nm] || [] };
     }).sort(function (a, b) { return b.ord - a.ord || a.nm.localeCompare(b.nm); });
-    $('planKpis').replaceChildren(kpi('Варок в плане', String(S.plan.length), 'по очереди сверху вниз'), kpi('Выход кордиала', fmt(litres, 0) + ' л', fmt(bottles, 0) + ' бутылок 0,75'),
+    $('planKpis').replaceChildren(kpi('Варок в плане', String(S.plan.length), 'по очереди сверху вниз'), kpi('Выход', fmt(litres, 0) + ' л', fmt(bottles, 0) + ' бутылок'),
       kpi('Позиций к заказу', String(toOrder), toOrder ? 'из ' + names.length + ' нужных' : 'всё есть на складе'), kpi('Сумма заказа', sum ? fmt(sum, 0) + ' ₽' : '—', 'по заполненным ценам'));
     $('orderBody').replaceChildren.apply($('orderBody'), rows.map(function (r) {
       return el('tr', { cls: r.ord > 1e-6 ? 'short' : '' }, [el('td', { text: r.nm }), el('td', { cls: 'n', text: mass(r.need) }), el('td', { cls: 'n', text: mass(r.have) }),
