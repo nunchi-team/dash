@@ -51,6 +51,14 @@ jobs:
           BRIDGE_KEY: ${{ secrets.BRIDGE_KEY }}
         run: python3 tools/list_drive.py; git rm -q robot/test/list.flag
 
+      - name: Посмотреть новые таблицы (по запросу, зашифровано)
+        if: hashFiles('robot/test/inspect.flag') != ''
+        env:
+          BRIDGE_URL: ${{ secrets.BRIDGE_URL }}
+          BRIDGE_KEY: ${{ secrets.BRIDGE_KEY }}
+          RECIPES_PASSWORD: ${{ secrets.RECIPES_PASSWORD }}
+        run: python3 tools/inspect_new.py; git rm -q robot/test/inspect.flag
+
       - name: Обновить запасную копию сайта из таблиц
         env:
           BRIDGE_URL: ${{ secrets.BRIDGE_URL }}
