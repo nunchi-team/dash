@@ -15,10 +15,15 @@ def status(**kw):
     os.makedirs(os.path.dirname(status_path), exist_ok=True)
     json.dump(dict(checked=now, **kw), open(status_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
+import stockimport  # noqa: E402
+try:
+    imp = stockimport.run(main.bridge, main.STOCK_ID)
+except Exception as e:
+    imp = {"ok": False, "error": str(e)[:300]}
 try:
     data = main.build_data()
 except Exception as e:
-    status(ok=False, error=str(e)[:500])
+    status(ok=False, error=str(e)[:500], stock_import=imp)
     print("ошибка:", e); sys.exit(0)
 
 robot_url = json.load(open(ep_path)).get("url", "") if os.path.exists(ep_path) else ""
@@ -29,7 +34,7 @@ h = hashlib.sha256((json.dumps(core, sort_keys=True, ensure_ascii=False) + robot
 old = open(hash_path).read().strip() if os.path.exists(hash_path) else ""
 counts = {l["key"]: len(l["recipes"]) for l in data["lines"]}
 if h == old:
-    status(ok=True, changed=False, lines=counts, stock=len(data.get("stock", {})), errors=data["errors"])
+    status(ok=True, changed=False, stock_import=imp, lines=counts, stock=len(data.get("stock", {})), errors=data["errors"])
     print("без изменений"); sys.exit(0)
 
 data["live"] = False
@@ -38,5 +43,5 @@ json.dump(data, open(tmp, "w", encoding="utf-8"), ensure_ascii=False)
 subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_recipes_page.py"), tmp, os.path.join(ROOT, "recipes", "index.html")], check=True)
 os.remove(tmp)
 open(hash_path, "w").write(h)
-status(ok=True, changed=True, lines=counts, stock=len(data.get("stock", {})), errors=data["errors"], updated=data["updated"])
+status(ok=True, changed=True, stock_import=imp, lines=counts, stock=len(data.get("stock", {})), errors=data["errors"], updated=data["updated"])
 print("страница обновлена", counts)

@@ -49,15 +49,29 @@ def parse_ttk(rows):
 
 def parse_stock(rows):
     cell = lambda r, c: rows[r][c] if r < len(rows) and c < len(rows[r]) else None
-    hdr = next(k for k in range(len(rows)) if str(cell(k, 0) or "").strip() == "Сырьё")
+    hdr = next(k for k in range(len(rows)) if str(cell(k, 0) or "").strip().startswith("Сырьё"))
     date = cell(1, 1)
     if hasattr(date, "strftime"): date = date.strftime("%d.%m.%Y")
     test = "ТЕСТ" in str(cell(1, 2) or "").upper()
-    stock = {}
+    hrow = rows[hdr]
+    has_alias = len(hrow) > 5 and str(hrow[5]).strip().startswith("Название в рецептах")
+    whcols = [(j, str(hrow[j]).replace("Склад:", "").strip()) for j in range(6, len(hrow)) if str(hrow[j]).startswith("Склад")]
+    stock, aliases = {}, {}
     for k in range(hdr + 1, len(rows)):
         n = cell(k, 0)
         q = num(cell(k, 1))
         if not n or q is None: continue
-        stock[str(n).strip()] = dict(qty=q, unit=str(cell(k, 2) or "кг").strip(), code=cell(k, 3) or "", note=cell(k, 4) or "")
-    return dict(stock=stock, stockDate=str(date or ""), stockTest=test)
-
+        n = str(n).strip()
+        e = dict(qty=q, unit=str(cell(k, 2) or "кг").strip(), code=cell(k, 3) or "", note=cell(k, 4) or "")
+        if whcols:
+            e["wh"] = {w: num(cell(k, j)) or 0 for j, w in whcols}
+        stock[n] = e
+        if has_alias:
+            for a in str(cell(k, 5) or "").split(";"):
+                a = a.strip()
+                if a: aliases[a] = n
+    for a, n in aliases.items():  # название из рецепта → та же позиция склада
+        if a not in stock:
+            stock[a] = dict(stock[n], src=n)
+    return dict(stock=stock, stockDate=str(date or ""), stockTest=test,
+                stockSource=str(cell(1, 3) or "") if has_alias else "", warehouses=[w for _, w in whcols])
