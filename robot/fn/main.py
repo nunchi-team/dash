@@ -138,6 +138,17 @@ def handler(event, context):
                 return reply(401, {"ok": False, "error": "wrong password"})
             d = dict(get_data(fresh=bool(req.get("fresh"))), botReady=bot_ready())
             return reply(200, {"ok": True, "data": d})
+        if action == "tgcheck":  # диагностика связи с Telegram из облака
+            out = {}
+            for host in ("https://api.telegram.org", "https://ya.ru", "https://script.google.com"):
+                t0 = time.time()
+                try:
+                    urllib.request.urlopen(host, timeout=10).read(100); out[host] = "ok %.1fs" % (time.time() - t0)
+                except urllib.error.HTTPError as e:
+                    out[host] = "http %s %.1fs" % (e.code, time.time() - t0)
+                except Exception as e:
+                    out[host] = "FAIL %s %.1fs" % (e, time.time() - t0)
+            return reply(200, {"ok": True, "net": out})
         if action == "publish":
             if not check_pw(req.get("pw")):
                 time.sleep(1)

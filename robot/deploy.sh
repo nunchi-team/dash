@@ -102,6 +102,7 @@ PWJSON=$(python3 -c 'import json,os;print(json.dumps({"action":"data","pw":os.en
 BROWSER=$(curl -s -m 60 -o /tmp/data.json -D /tmp/hdr.txt -w '%{http_code} %{time_total}s %{size_download}b' -X POST "$URL" \
   -H 'Origin: https://team.nunchidrink.ru' -H 'Content-Type: text/plain' --data "$PWJSON")
 echo "как браузер: $BROWSER; CORS: $(grep -i '^access-control-allow-origin' /tmp/hdr.txt | tr -d '\r'); botReady: $(python3 -c 'import json;print(json.load(open("/tmp/data.json")).get("data",{}).get("botReady"))' 2>&1)" >>"$LOG"
+echo "сеть из облака: $(curl -s -m 60 -X POST "$URL" -d '{"action":"tgcheck"}')" >>"$LOG"
 if echo "$HEALTH" | grep -q '"ok": true'; then
   write_status true "готово" "{\"url\": \"$URL\", \"health\": $HEALTH}"
 else
