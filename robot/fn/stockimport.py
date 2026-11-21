@@ -40,6 +40,32 @@ ALIASES = {
 }
 
 
+# типовые свойства по виду сырья: (начало названия, группа, СВ %, кислотность % лим.экв, плотность, пометка)
+PROPS = [
+    ("Ботаникал Хинин", "Хинин", 100, 0, 1, ""),
+    ("Ароматизатор", "Ароматизатор", 0, 0, 1, ""), ("Ботаникал", "Травы", 0, 0, 1, ""),
+    ("Экстракт", "CO2-экстракт", 0, 0, 1, ""),
+    ("Кислота Лимонная", "Кислота", 100, 100, 1, ""), ("Кислота Яблочная", "Кислота", 100, 95.5, 1, ""),
+    ("Кислота Молочная", "Кислота", 80, 56.9, 1.2, "80%?"), ("Кислота Аскорбиновая", "Кислота", 100, 36.4, 1, ""),
+    ("Кислота", "Кислота", 100, 100, 1, "кислотность уточнить"),
+    ("Сахароза", "Сахар", 100, 0, 1.59, ""), ("Сахар", "Сахар", 100, 0, 1.59, ""),
+    ("Сок", "Сок", 65, 0, 1.32, "СВ/кисл. уточнить"), ("Пюре", "Сок", 15, 0, 1.05, "СВ/кисл. уточнить"),
+    ("Концентрат", "Сок", 65, 0, 1.32, "кисл. уточнить"),
+    ("Сорбат", "Консервант", 100, 0, 1, ""), ("Бензоат", "Консервант", 100, 0, 1, ""),
+    ("Ксантан", "Гидроколлоид", 90, 0, 1, ""), ("Гуммиарабик", "Гидроколлоид", 90, 0, 1, ""),
+    ("Эмульсия", "Гидроколлоид", 0, 0, 1, ""), ("Краситель", "Прочее", 0, 0, 1, ""), ("Соль", "Соль", 100, 0, 1, ""),
+    ("Мирт", "Травы", 0, 0, 1, ""), ("Мята", "Травы", 0, 0, 1, ""), ("Тонка", "Травы", 0, 0, 1, ""),
+    ("Листья", "Травы", 0, 0, 1, ""), ("Микс трав", "Травы", 0, 0, 1, ""),
+]
+
+
+def default_props(name):
+    for pref, g, ss, ac, d, note in PROPS:
+        if name.lower().startswith(pref.lower()):
+            return dict(group=g, ss=ss, acid=ac, density=d, note=note)
+    return dict(group="Прочее", ss=0, acid=0, density=1, note="")
+
+
 def _num(v):
     if v is None or v == "":
         return None
@@ -97,16 +123,28 @@ def parse_report(values):
     return [g["name"] for g in whs], items
 
 
-def build_stock_rows(whs, items, current):
-    """current: имя → {unit, alias, code, note} из текущей таблицы склада (правки пользователя сохраняем)."""
-    hdr = ["Сырьё (как в 1С)", "Остаток", "Ед.", "Код 1С", "Комментарий", "Название в рецептах"] + ["Склад: " + w for w in whs]
+PROP_HDR = ["Группа", "СВ, %", "Кисл., %", "Плотность, кг/л"]
+
+
+def build_stock_rows(whs, items, current, refs=None):
+    """current: имя → {unit, alias, code, note, props} из текущей таблицы склада (правки пользователя сохраняем).
+    refs: справочники ТТК (имя → свойства) — для позиций, уже используемых в рецептах."""
+    refs = refs or {}
+    hdr = ["Сырьё (как в 1С)", "Остаток", "Ед.", "Код 1С", "Комментарий", "Название в рецептах"] + PROP_HDR + ["Склад: " + w for w in whs]
     rows = []
     for it in sorted(items, key=lambda x: x["name"].lower()):
         c = current.get(it["name"], {})
         unit = c.get("unit") or raw_unit(it["name"])
         alias = c.get("alias") if c.get("alias") is not None and c.get("alias") != "" else "; ".join(ALIASES.get(it["name"], []))
-        note = c.get("note") or ("ед. проверить" if not c.get("unit") else "")
-        rows.append([it["name"], it["qty"], unit, c.get("code", ""), note, alias] + [it["wh"].get(w, 0) for w in whs])
+        note = c.get("note") if c else "ед. проверить"
+        pr = c.get("props")
+        if not pr or pr.get("group") in (None, ""):
+            known = next((refs[a.strip()] for a in [it["name"]] + str(alias).split(";") if a.strip() in refs), None)
+            pr = dict(known) if known else default_props(it["name"])
+            if not known and pr.get("note"):
+                note = "; ".join(x for x in [note, pr["note"]] if x)
+        rows.append([it["name"], it["qty"], unit, c.get("code", ""), note or "", alias,
+                     pr.get("group", ""), pr.get("ss", 0), pr.get("acid", 0), pr.get("density", 1)] + [it["wh"].get(w, 0) for w in whs])
     return hdr, rows
 
 
@@ -116,17 +154,22 @@ def read_current(values):
         h = next(i for i, r in enumerate(values) if r and str(r[0]).strip().startswith("Сырьё"))
     except StopIteration:
         return cur
-    hasalias = len(values[h]) > 5 and str(values[h][5]).strip().startswith("Название в рецептах")
+    hdrrow = [str(x).strip() for x in values[h]]
+    hasalias = len(hdrrow) > 5 and hdrrow[5].startswith("Название в рецептах")
+    hasprops = len(hdrrow) > 9 and hdrrow[6] == "Группа"
     for r in values[h + 1:]:
         if not r or not str(r[0]).strip():
             continue
-        cur[str(r[0]).strip()] = dict(unit=str(r[2]).strip() if len(r) > 2 and r[2] != "" else "",
-                                      code=r[3] if len(r) > 3 else "", note=r[4] if len(r) > 4 else "",
-                                      alias=(r[5] if hasalias and len(r) > 5 else None))
+        e = dict(unit=str(r[2]).strip() if len(r) > 2 and r[2] != "" else "",
+                 code=r[3] if len(r) > 3 else "", note=r[4] if len(r) > 4 else "",
+                 alias=(r[5] if hasalias and len(r) > 5 else None))
+        if hasprops and str(r[6]).strip():
+            e["props"] = dict(group=str(r[6]).strip(), ss=_num(r[7]) or 0, acid=_num(r[8]) or 0, density=_num(r[9]) or 1)
+        cur[str(r[0]).strip()] = e
     return cur
 
 
-def run(bridge, stock_id, force=False):
+def run(bridge, stock_id, force=False, ttk_ids=()):
     """Ищет свежий отчёт 1С в папке склада и переносит в таблицу склада. Возвращает итог (dict)."""
     files = bridge([{"action": "list"}])[0]["files"]
     folder = next((f["path"] for f in files if f["id"] == stock_id), None)
@@ -138,12 +181,20 @@ def run(bridge, stock_id, force=False):
     if not src:
         return {"ok": True, "imported": False, "reason": "в папке склада нет отчёта 1С (таблица с колонками «Номенклатура» и «Остаток»)"}
     f, rep = src
-    stamp = "%s|%s" % (f["id"], f["modified"])
+    stamp = "%s|%s|v2" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
     marker = str(stock_vals[1][4]).strip() if len(stock_vals) > 1 and len(stock_vals[1]) > 4 else ""
     if marker == stamp and not force:
         return {"ok": True, "imported": False, "reason": "этот отчёт уже загружен", "source": f["name"]}
     whs, items = parse_report(rep["values"])
-    hdr, rows = build_stock_rows(whs, items, read_current(stock_vals))
+    refs = {}
+    try:
+        from parsers import parse_ttk
+        for r in bridge([{"action": "read", "id": i} for i in ttk_ids]) if ttk_ids else []:
+            for n, v in parse_ttk(r["values"])["ref"].items():
+                refs.setdefault(n, v)
+    except Exception:
+        refs = {}
+    hdr, rows = build_stock_rows(whs, items, read_current(stock_vals), refs)
     width = len(hdr)
     mod = datetime.datetime.fromisoformat(f["modified"].replace("Z", "+00:00")).astimezone(MSK)
     old_n = max(len(stock_vals), 5)

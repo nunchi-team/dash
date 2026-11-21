@@ -266,7 +266,7 @@ def handler(event, context):
             if not check_pw(req.get("pw")):
                 time.sleep(1)
                 return reply(401, {"ok": False, "error": "wrong password"})
-            res = stockimport.run(bridge, STOCK_ID, force=bool(req.get("force")))
+            res = stockimport.run(bridge, STOCK_ID, force=bool(req.get("force")), ttk_ids=[sid for _, _, sid in LINES])
             _cache["data"] = None
             return reply(200, res)
         if action == "addRecipe":

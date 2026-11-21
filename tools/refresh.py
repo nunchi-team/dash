@@ -17,7 +17,7 @@ def status(**kw):
 
 import stockimport  # noqa: E402
 try:
-    imp = stockimport.run(main.bridge, main.STOCK_ID)
+    imp = stockimport.run(main.bridge, main.STOCK_ID, force=os.environ.get("FORCE_STOCK") == "1", ttk_ids=[s for _, _, s in main.LINES])
 except Exception as e:
     imp = {"ok": False, "error": str(e)[:300]}
 try:

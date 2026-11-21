@@ -56,6 +56,7 @@ def parse_stock(rows):
     hrow = rows[hdr]
     has_alias = len(hrow) > 5 and str(hrow[5]).strip().startswith("Название в рецептах")
     whcols = [(j, str(hrow[j]).replace("Склад:", "").strip()) for j in range(6, len(hrow)) if str(hrow[j]).startswith("Склад")]
+    has_props = len(hrow) > 9 and str(hrow[6]).strip() == "Группа"
     stock, aliases = {}, {}
     for k in range(hdr + 1, len(rows)):
         n = cell(k, 0)
@@ -65,6 +66,8 @@ def parse_stock(rows):
         e = dict(qty=q, unit=str(cell(k, 2) or "кг").strip(), code=cell(k, 3) or "", note=cell(k, 4) or "")
         if whcols:
             e["wh"] = {w: num(cell(k, j)) or 0 for j, w in whcols}
+        if has_props and str(cell(k, 6) or "").strip():
+            e.update(group=str(cell(k, 6)).strip(), ss=num(cell(k, 7)) or 0, acid=num(cell(k, 8)) or 0, density=num(cell(k, 9)) or 1)
         stock[n] = e
         if has_alias:
             for a in str(cell(k, 5) or "").split(";"):

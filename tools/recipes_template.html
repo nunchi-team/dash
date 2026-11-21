@@ -765,12 +765,15 @@ select.inp { appearance: auto; }
 
   /* ---------- новый вкус ---------- */
   var DEF = { tonics: { bottle: 200, water: 2000, sweet: 'Сироп ВЛ', brix: 6, cat: 'Цитрусовые' }, cordials: { bottle: 750, water: 500, sweet: 'Сахар', brix: 45, cat: 'Ягодные' } };
-  var NG = ['Кислота', 'Хинин', 'Ароматизатор', 'CO2-экстракт', 'Экстракт', 'Травы', 'Сок', 'Гидроколлоид', 'Соль', 'Консервант'];
+  var NG = ['Кислота', 'Хинин', 'Ароматизатор', 'CO2-экстракт', 'Экстракт', 'Травы', 'Сок', 'Гидроколлоид', 'Соль', 'Консервант', 'Прочее'];
   var NV = null;
   function knownElse(k) {   // сырьё из справочников других линеек (со свойствами) и со склада (только название)
     var out = {};
     (D.lines || []).forEach(function (l) { if (l.key === k) return; Object.keys(l.ref || {}).forEach(function (n) { if (!out[n]) out[n] = Object.assign({ from: l.title }, l.ref[n]); }); });
-    Object.keys(D.stock || {}).forEach(function (n) { if (!out[n]) out[n] = { from: 'склад', stockOnly: true }; });
+    Object.keys(D.stock || {}).forEach(function (n) {
+      if (out[n]) return; var st = D.stock[n];
+      out[n] = st.group ? { from: 'склад 1С', group: st.group, ss: st.ss, acid: st.acid, density: st.density, supplier: '' } : { from: 'склад', stockOnly: true };
+    });
     return out;
   }
   function lineRef(k) { var l = (D.lines || []).filter(function (x) { return x.key === k; })[0]; return (l && l.ref) || {}; }
