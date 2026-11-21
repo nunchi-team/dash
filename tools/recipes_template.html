@@ -116,6 +116,7 @@ td .cm.flag { color: var(--bad); font-weight: 700; }
 .banner.ok { background: var(--ok-soft); color: var(--ok); }
 .banner.bad { background: var(--bad-soft); color: var(--bad); }
 .banner b { font-weight: 800; }
+.banner .seg button { white-space: nowrap; padding: 7px 12px; }
 .planbar { position: sticky; bottom: 14px; z-index: 4; width: fit-content; margin: 16px auto 0; background: var(--ink); color: var(--bg); border-radius: 999px; padding: 8px 8px 8px 20px; display: flex; gap: 14px; align-items: center; box-shadow: 0 10px 28px rgba(0,0,0,.22); max-width: 100%; font-size: 14px; }
 .planbar .btn { background: var(--bg); color: var(--ink); padding: 9px 16px; border-radius: 999px; }
 .planbar .bad { color: #FF9C93; font-weight: 700; }
@@ -324,7 +325,7 @@ select.inp { appearance: auto; }
     for (var k in a) { if (a[k] == null) continue; if (k === 'text') e.textContent = a[k]; else if (k === 'cls') e.className = a[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), a[k]); else e.setAttribute(k, a[k]); }
     (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
   function fmt(v, d) { if (v == null || !isFinite(v)) return '—'; return Number(v).toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }); }
-  function smart(v) { return fmt(v, v >= 100 ? 1 : v >= 10 ? 2 : v >= 1 ? 2 : 3); }
+  function smart(v) { if (!v) return '0'; var a = Math.abs(v); return fmt(v, a >= 1000 ? 0 : a >= 100 ? 1 : a >= 1 ? 2 : 3); }
   function rho(b) { return 0.998260062 + 0.003838154 * b + 0.0000141736838 * b * b + 0.0000000316524217 * b * b * b; }
 
   /* ---------- вход ---------- */
@@ -448,7 +449,15 @@ select.inp { appearance: auto; }
     });
     return out;
   }
-  function stockG(n) { var st = stockOf(n.name); return st ? st.qty * fac(st.unit, n.dens) : null; }
+  var WH = store.get('nunchi_wh', '');
+  function whs() { return (D && D.warehouses) || []; }
+  function curWh() { return whs().indexOf(WH) >= 0 ? WH : ''; }
+  function stockG(n) { var st = stockOf(n.name); if (!st) return null; var w = curWh(); var q = w && st.wh ? (st.wh[w] || 0) : st.qty; return q * fac(st.unit, n.dens); }
+  function whShort(w) { return w.replace(/\s*склад\s*/i, '').trim() || w; }
+  function whSplit(name, unit, dens) {
+    var st = stockOf(name); if (!st || !st.wh || whs().length < 2) return null;
+    return el('span', { cls: 'cm', text: whs().map(function (w) { return whShort(w) + ' ' + show((st.wh[w] || 0) * fac(st.unit, dens), unit, dens); }).join(' · ') });
+  }
   /* одна варка против склада */
   function check(t, s) {
     var ns = needs(t, s), short = [], missing = [];
@@ -457,9 +466,16 @@ select.inp { appearance: auto; }
   }
   function stockLine(el0) {
     if (!hasStock()) return null;
+    var sel = null;
+    if (whs().length > 1) {
+      sel = el('div', { cls: 'seg', style: 'display:inline-flex;margin-left:auto' }, [''].concat(whs()).map(function (w) {
+        return el('button', { type: 'button', 'aria-pressed': String(curWh() === w), text: w ? whShort(w) : 'Все склады',
+          onclick: function () { WH = w; store.set('nunchi_wh', w); route(); } });
+      }));
+    }
     return el('div', { cls: 'banner' + (D.stockTest ? ' test' : '') }, [
-      el('span', {}, ['Остатки склада на ', el('b', { text: D.stockDate || '—' })]),
-      D.stockTest ? el('b', { text: 'ТЕСТОВЫЕ ЦИФРЫ — замените в таблице «Нунчи склад — остатки»' }) : null]);
+      el('span', {}, ['Остатки на ', el('b', { text: D.stockDate || '—' }), curWh() ? ' · считаю по складу «' + curWh() + '»' : (whs().length > 1 ? ' · все склады' : '')]),
+      D.stockTest ? el('b', { text: 'ТЕСТОВЫЕ ЦИФРЫ — замените в таблице «Нунчи склад — остатки»' }) : null, sel]);
   }
 
   /* ---------- план ---------- */
@@ -566,7 +582,8 @@ select.inp { appearance: auto; }
     if (n.have == null) return el('td', { cls: 'n' }, [el('span', { cls: 'st na', text: 'нет в остатках' })]);
     var ok = n.have + 1e-9 >= n.g;
     return el('td', { cls: 'n' }, [show(n.have, n.unit, n.dens),
-      el('span', { cls: 'st ' + (ok ? 'ok' : 'bad'), text: ok ? '✓ хватает' : 'заказать ' + show(n.g - n.have, n.unit, n.dens) })]);
+      el('span', { cls: 'st ' + (ok ? 'ok' : 'bad'), text: ok ? '✓ хватает' : 'заказать ' + show(n.g - n.have, n.unit, n.dens) }),
+      whSplit(n.name, n.unit, n.dens)]);
   }
   function render() {
     var t = cur, s = read(), c = calc(t, s), cc = CAT[t.category] || 'var(--c-other)';
@@ -687,7 +704,7 @@ select.inp { appearance: auto; }
       var need = o.order > 1e-6;
       return el('tr', { cls: need ? 'short' : '' }, [el('td', {}, [el('span', { cls: 'nm', text: o.name })]),
         el('td', { cls: 'n', text: show(o.g, o.unit, o.dens) }),
-        el('td', { cls: 'n', text: o.have == null ? 'нет в остатках' : show(o.have, o.unit, o.dens) }),
+        el('td', { cls: 'n' }, [o.have == null ? 'нет в остатках' : show(o.have, o.unit, o.dens), whSplit(o.name, o.unit, o.dens)]),
         el('td', { cls: 'n' + (need ? ' order' : ''), text: need ? show(o.order, o.unit, o.dens) : '✓' }),
         el('td', { text: o.supplier })]);
     }) : [el('tr', {}, [el('td', { colspan: '5', text: 'Всё сырьё есть на складе.' })])]);
