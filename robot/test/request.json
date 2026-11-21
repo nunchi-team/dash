@@ -1,0 +1,19 @@
+{
+ "tests": [
+  {"line": "tonics", "sheet": "1lF3ysP0LmisVKF2RBHlz2MzhYrgr99cQAekrfwacbTU",
+   "recipe": {"name": "ТЕСТ3 Юдзу — Базилик", "status": "R&D", "category": "Цитрусовые", "bottleMl": 200, "water": 2000,
+              "sweetener": "Сироп ВЛ", "brixTarget": 6.0, "syrupBrix": 67,
+              "items": [{"name": "Кислота лимонная", "value": 2.2, "unit": "г", "outUnit": "кг"},
+                        {"name": "Хинин", "value": 0.08, "unit": "г", "outUnit": "г"},
+                        {"name": "Аромка юдзу", "value": 0.4, "unit": "г", "outUnit": "г", "comment": "новая аромка"},
+                        {"name": "Лист лайма", "value": 0.2, "unit": "г", "outUnit": "г"}],
+              "newRef": [{"name": "Аромка юдзу", "group": "Ароматизатор", "ss": 0, "acid": 0, "density": 1, "supplier": "тест"}]}},
+  {"line": "cordials", "sheet": "1LJLmBvAd6cw8BEDzyYSh9t4V-ofUwU6Y8XGTJNIcKxg",
+   "recipe": {"name": "ТЕСТ3 Вишня — Миндаль", "status": "R&D", "category": "Ягодные", "bottleMl": 750, "water": 500,
+              "sweetener": "Сахар", "brixTarget": 45, "syrupBrix": 67,
+              "items": [{"name": "Конц. яблоко", "value": 80, "unit": "г", "outUnit": "кг"},
+                        {"name": "Кислота лимонная", "value": 6, "unit": "г", "outUnit": "кг"},
+                        {"name": "Кислота яблочная", "value": 4, "unit": "г", "outUnit": "кг"},
+                        {"name": "Сорбат калия", "value": 0.8, "unit": "г", "outUnit": "г"}]}}
+ ]
+}

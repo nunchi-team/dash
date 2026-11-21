@@ -119,6 +119,23 @@ UNITS = ("г", "кг", "мл", "л")
 GROUPS = [g for g in cardgen.GROUP_ORDER if g not in ("Сахар", "Сироп")]
 
 
+def probe_notation(sid, nrows):
+    """Какую запись формул понимает таблица: en (запятые) или ru (точки с запятой). Пробует в пустой ячейке и стирает."""
+    cell = "AD%d" % (nrows + 5)
+    rng = "%s:AD%d" % (cell, nrows + 6)
+    res = bridge([{"action": "formulas", "id": sid, "range": rng, "values": [["=SUM(1,2)"], ["=SUM(1;2)"]]},
+                  {"action": "read", "id": sid}])
+    vals = res[1]["values"]
+    get = lambda r: vals[r][29] if r < len(vals) and len(vals[r]) > 29 else None
+    en, ru = get(nrows + 4), get(nrows + 5)
+    bridge([{"action": "write", "id": sid, "range": rng, "values": [[""], [""]]}])
+    _probe["last"] = {"en": en, "ru": ru}
+    return "ru" if ru == 3 and en != 3 else "en"
+
+
+_probe = {}
+
+
 def add_recipe(line, rec, sheet_id=None, stock_id=None):
     """Проверяет рецепт и дописывает карточку в таблицу линейки. Возвращает краткий итог."""
     ids = {k: sid for k, _, sid in LINES}
@@ -163,6 +180,7 @@ def add_recipe(line, rec, sheet_id=None, stock_id=None):
                  brixTarget=float(rec.get("brixTarget") or 0) or None, syrupBrix=float(rec.get("syrupBrix") or 0) or None,
                  items=items, newRef=new_ref)
     allref = dict(ref, **{n["name"]: n for n in new_ref})
+    cardgen.NOTATION["v"] = probe_notation(sid, len(vals))
     ops = cardgen.plan_ops(sid, vals, clean, allref)
     bridge(ops, timeout=50)
     if new_ref and stock_id != "-":  # новое сырьё — и на склад, с нулевым остатком
@@ -177,7 +195,7 @@ def add_recipe(line, rec, sheet_id=None, stock_id=None):
         except Exception:
             traceback.print_exc()
     _cache["data"] = None
-    return dict(name=name, items=len(items), newRef=len(new_ref), ops=len(ops))
+    return dict(name=name, items=len(items), newRef=len(new_ref), ops=len(ops), notation=cardgen.NOTATION["v"], probe=_probe.get("last"))
 
 
 def check_pw(pw):

@@ -143,6 +143,25 @@ def _col(i):
     return chr(ord("A") + i)
 
 
+def to_locale(f, notation):
+    """Перевод формулы в запись таблицы: ru — разделитель «;», дробная часть «,» (вне кавычек)."""
+    if notation != "ru":
+        return f
+    out, q = [], False
+    for i, ch in enumerate(f):
+        if ch == '"':
+            q = not q; out.append(ch); continue
+        if not q and ch == ",":
+            out.append(";"); continue
+        if not q and ch == "." and i > 0 and f[i - 1].isdigit() and i + 1 < len(f) and f[i + 1].isdigit():
+            out.append(","); continue
+        out.append(ch)
+    return "".join(out)
+
+
+NOTATION = {"v": "en"}
+
+
 def write_cells(op, r0, rows):
     """Значения — setValues (без формул), формулы — setFormulas (английская запись, не зависит от языка таблицы)."""
     width = max(len(r) for r in rows)
@@ -155,7 +174,8 @@ def write_cells(op, r0, rows):
                 k = j
                 while k + 1 < len(r) and isinstance(r[k + 1], str) and r[k + 1].startswith("="):
                     k += 1
-                op(action="formulas", range="%s%d:%s%d" % (_col(j), r0 + i, _col(k), r0 + i), values=[r[j:k + 1]])
+                op(action="formulas", range="%s%d:%s%d" % (_col(j), r0 + i, _col(k), r0 + i),
+                   values=[[to_locale(f, NOTATION["v"]) for f in r[j:k + 1]]])
                 j = k + 1
             else:
                 j += 1
