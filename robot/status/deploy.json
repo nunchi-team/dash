@@ -1,0 +1,32 @@
+{
+ "ok": false,
+ "step": "создание функции",
+ "at": "21.11.2026 23:11",
+ "log": [
+  "Yandex Cloud CLI 1.47.0 linux/amd64",
+  "Profile 'robot' created and activated",
+  "ERROR: execute command: run command: Function with name \"nunchi-robot\" not found",
+  "",
+  "",
+  "x-client-trace-id: e14dd77d-9a6e-4f52-ac28-e433b5b57f93",
+  "",
+  "Use x-client-trace-id for investigation of issues in cloud support",
+  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-21T20-11-05.798-yc_serverless_function_get.txt",
+  "ERROR: execute command: run command: x-request-id = 2f43184a-0b49-435e-95eb-22b187d7d731 x-server-trace-id = e8796da37782f89d:618e83851f8ff26e:472408c4cf0485a7:1 x-client-trace-id = 3cd1106e-6d53-4847-9f35-d217b1ffb7c3 rpc error: code = NotFound desc = Folder with id aject6749kvfqvd0e8bo not found",
+  "",
+  "",
+  "x-request-id: 2f43184a-0b49-435e-95eb-22b187d7d731",
+  "x-server-trace-id: e8796da37782f89d:618e83851f8ff26e:472408c4cf0485a7:1",
+  "x-client-trace-id: 3cd1106e-6d53-4847-9f35-d217b1ffb7c3",
+  "",
+  "Use x-request-id, x-server-trace-id, x-client-trace-id for investigation of issues in cloud support",
+  "",
+  "gRPC status details:",
+  "- '@type': type.googleapis.com/google.rpc.LocalizedMessage",
+  "  locale: en",
+  "  message: Folder with id aject6749kvfqvd0e8bo not found",
+  "- '@type': type.googleapis.com/google.rpc.RequestInfo",
+  "  request_id: 2f43184a-0b49-435e-95eb-22b187d7d731",
+  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-21T20-11-10.221-yc_serverless_function_create.txt"
+ ]
+}
