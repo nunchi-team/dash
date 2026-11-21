@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Nunchi — ТТК</title>
+<style>
+:root {
+  --bg: #FFFFFF; --ink: #141414; --muted: #6B6B6B; --line: #E4E2DE; --panel: #F4F3F1; --amber: #C8892B;
+  --ok: #2E8B57; --ok-soft: #E4F2EA; --warn: #B7791F; --warn-soft: #F8EEDC; --bad: #C0453B; --bad-soft: #F8E3E1;
+  --c-berry: #B5445E; --c-citrus: #C8892B; --c-fruit: #D0693F; --c-herb: #5B8A5F; --c-other: #9A968E;
+  --font: "Helvetica Neue", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #151413; --ink: #F2F0EC; --muted: #A8A49C; --line: #33312D; --panel: #201F1D; --amber: #E2A84A;
+    --ok: #5DBB83; --ok-soft: #1C2E23; --warn: #E2A84A; --warn-soft: #342A19; --bad: #E5675C; --bad-soft: #3A201D;
+    --c-berry: #E07A93; --c-citrus: #E2A84A; --c-fruit: #EE8A62; --c-herb: #8CC08F; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45; }
+button, input { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+.num { font-variant-numeric: tabular-nums; }
+.mark { font-size: 30px; font-weight: 900; letter-spacing: -.04em; margin: 0; line-height: 1; }
+.mark sup { font-size: 11px; font-weight: 700; vertical-align: top; margin-left: 1px; }
+
+/* login */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left)); }
+.login form { width: min(380px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.login .mark { font-size: 52px; } .login .mark sup { font-size: 18px; }
+.login .tg { color: var(--amber); font-size: 18px; font-weight: 600; margin: 4px 0 14px; }
+.login input[type=password] { font-size: 18px; padding: 16px 18px; border: 1.5px solid var(--line); border-radius: 18px; background: var(--bg); outline: none; }
+.login input[type=password]:focus { border-color: var(--ink); }
+.btn { border: 0; background: var(--ink); color: var(--bg); border-radius: 14px; padding: 12px 18px; font-weight: 700; cursor: pointer; }
+.login .btn { font-size: 18px; padding: 16px; border-radius: 18px; }
+.err { color: var(--bad); font-size: 14px; min-height: 20px; margin: 0; }
+
+/* shell */
+.top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1000px; margin: 0 auto; padding: 12px max(16px, env(safe-area-inset-left)); display: flex; align-items: center; gap: 14px 20px; flex-wrap: wrap; }
+.brand small { display: block; font-size: 12px; font-weight: 600; margin-top: 3px; }
+.lines { display: flex; gap: 4px; background: var(--panel); border-radius: 999px; padding: 4px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.lines button { white-space: nowrap; }
+.lines button { border: 0; background: none; padding: 7px 14px; border-radius: 999px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.lines button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.lines button:disabled { cursor: default; opacity: .55; }
+.meta { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--muted); }
+.link { background: none; border: 0; padding: 0; font-weight: 700; color: var(--ink); cursor: pointer; }
+.tagline { color: var(--amber); font-weight: 600; font-size: 14px; line-height: 1.2; text-align: right; }
+main { max-width: 1000px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-left)) 64px; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-size: clamp(24px, 3.4vw, 32px); line-height: 1.12; font-weight: 800; letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+h2 { font-size: 18px; font-weight: 800; margin: 0; }
+.sub { color: var(--muted); margin: 0; max-width: 70ch; }
+
+/* list */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.card { text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 18px; padding: 18px; cursor: pointer; display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
+.card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--cc); }
+.card:hover { border-color: var(--ink); }
+.card .t { font-size: 17px; font-weight: 800; line-height: 1.2; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.rd { background: var(--panel); color: var(--ink); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.bad { background: var(--bad-soft); color: var(--bad); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ttk */
+.back { align-self: flex-start; }
+.panel { background: var(--panel); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.stepper { display: flex; align-items: stretch; background: var(--bg); border: 1.5px solid var(--line); border-radius: 14px; overflow: hidden; }
+.stepper:focus-within { border-color: var(--ink); }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper input { -moz-appearance: textfield; width: 100%; min-width: 0; border: 0; background: none; padding: 10px 12px; font-size: 20px; font-weight: 800; outline: none; text-align: center; }
+.stepper button { border: 0; background: none; width: 40px; font-size: 20px; font-weight: 700; cursor: pointer; color: var(--muted); }
+.stepper button:hover { color: var(--ink); }
+.seg { display: flex; background: var(--bg); border: 1.5px solid var(--line); border-radius: 14px; padding: 3px; gap: 3px; }
+.seg button { flex: 1; border: 0; background: none; border-radius: 11px; padding: 9px 8px; font-weight: 700; cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--bg); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.kpi.hero { background: var(--ink); color: var(--bg); }
+.kpi span { font-size: 12px; opacity: .7; }
+.kpi b { font-size: 24px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.kpi small { font-size: 12px; opacity: .7; }
+.kpi.alert { background: var(--bad-soft); color: var(--bad); }
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 800; white-space: nowrap; }
+td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.grp td { background: var(--panel); font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding-top: 6px; padding-bottom: 6px; }
+tr.sweet td { background: color-mix(in srgb, var(--amber) 9%, transparent); }
+tr.off td { color: var(--muted); }
+td .nm { font-weight: 700; }
+td .cm { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+td .cm.flag { color: var(--bad); font-weight: 700; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.ghost { background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); }
+@media (max-width: 640px) { .tagline { display: none; } th:nth-child(4), td:nth-child(4) { display: none; } .meta { margin-left: 0; width: 100%; justify-content: space-between; } th, td { padding: 8px 9px; } }
+@media print {
+  .top, .back, .actions, .controls, .meta { display: none !important; }
+  body { font-size: 12px; } main { padding: 0; } .panel { background: none; padding: 0; } .kpi { border: 1px solid #ccc; }
+}
+</style>
+</head>
+<body>
+
+<section class="login" id="login">
+  <form id="loginForm">
+    <div><p class="mark">Nunchi<sup>®</sup></p><p class="tg">Тонкое искусство рецептуры</p></div>
+    <label for="pwd" class="sub" style="font-size:14px">Пароль</label>
+    <input id="pwd" type="password" autocomplete="current-password" required>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)"><input type="checkbox" id="remember" checked> Запомнить на этом устройстве</label>
+    <button class="btn" type="submit" id="loginBtn">Войти</button>
+    <p class="err" id="err"></p>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <header class="top"><div class="top-in">
+    <div class="brand"><span class="mark">Nunchi<sup>®</sup></span><small>the subtle art of drinks</small></div>
+    <nav class="lines" aria-label="Линейки">
+      <button aria-pressed="true">Тоники</button>
+      <button disabled title="Скоро">Кордиалы</button>
+      <button disabled title="Скоро">Лимонады</button>
+      <button disabled title="Скоро">Джин</button>
+    </nav>
+    <div class="meta"><span class="tagline">Тонкое искусство<br>рецептуры</span><span id="stamp"></span><button class="link" id="logout">Выйти</button></div>
+  </div></header>
+  <main>
+    <section id="list">
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+        <h1>ТТК тоников</h1>
+        <p class="sub">Откройте тоник: задайте воду на партию, подсластитель и Brix — состав и количество сиропа пересчитаются сразу.</p>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section id="ttk" hidden style="display:flex;flex-direction:column;gap:16px">
+      <button class="link back" id="back">← Все тоники</button>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="chips" id="tags"></div>
+        <h1 id="tname"></h1>
+      </div>
+      <div class="panel">
+        <div class="controls">
+          <div class="field"><label for="w">Вода на партию, л</label>
+            <div class="stepper"><button data-d="-100" data-t="w" aria-label="Минус 100">−</button><input id="w" type="number" inputmode="decimal" min="0" step="10"><button data-d="100" data-t="w" aria-label="Плюс 100">+</button></div></div>
+          <div class="field"><label>Подсластитель</label>
+            <div class="seg" id="sweet"><button data-v="Сироп ВЛ">Сироп ВЛ</button><button data-v="Сахар">Сахар</button></div></div>
+          <div class="field"><label for="bt">Brix цель</label>
+            <div class="stepper"><button data-d="-0.1" data-t="bt" aria-label="Минус 0,1">−</button><input id="bt" type="number" inputmode="decimal" step="0.1"><button data-d="0.1" data-t="bt" aria-label="Плюс 0,1">+</button></div></div>
+          <div class="field" id="sbField"><label for="sb">Brix сиропа</label>
+            <div class="stepper"><button data-d="-0.5" data-t="sb" aria-label="Минус 0,5">−</button><input id="sb" type="number" inputmode="decimal" step="0.5"><button data-d="0.5" data-t="sb" aria-label="Плюс 0,5">+</button></div></div>
+        </div>
+        <div class="kpis" id="kpis"></div>
+        <div class="actions"><button class="btn ghost" id="reset">Вернуть значения из ТТК</button><button class="btn ghost" id="print">Печать ТТК</button></div>
+      </div>
+      <div class="tw"><table>
+        <thead><tr><th>Ингредиент</th><th class="n">На 1 л воды</th><th class="n">На партию</th><th>Поставщик</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+      <p class="note">Выход учитывает 2% технологических потерь. Количество сиропа и сахара считается от Brix цели; прочие ингредиенты — по норме из ТТК.</p>
+    </section>
+  </main>
+</div>
+
+<script id="payload" type="application/json">__PAYLOAD__</script>
+<script>
+(function () {
+  var P = JSON.parse(document.getElementById('payload').textContent);
+  var D = null, cur = null;
+  var $ = function (id) { return document.getElementById(id); };
+  var store = { get: function (k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+                set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+                del: function (k) { try { localStorage.removeItem(k); } catch (e) {} } };
+  var CAT = { 'Ягодные': 'var(--c-berry)', 'Цитрусовые': 'var(--c-citrus)', 'Фруктовые': 'var(--c-fruit)', 'Травяные и цветочные': 'var(--c-herb)' };
+  var ORDER = ['Сахар', 'Сироп', 'Кислота', 'Хинин', 'Ароматизатор', 'CO2-экстракт', 'Травы', 'Сок'];
+  var GNAME = { 'CO2-экстракт': 'CO₂-экстракты', 'Травы': 'Травы и сухоцветы', 'Ароматизатор': 'Ароматизаторы', 'Кислота': 'Кислоты', 'Сок': 'Соки', 'Сахар': 'Подсластитель', 'Сироп': 'Подсластитель', 'Хинин': 'Хинин' };
+
+  function el(t, a, kids) { var e = document.createElement(t); a = a || {};
+    for (var k in a) { if (k === 'text') e.textContent = a[k]; else if (k === 'cls') e.className = a[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), a[k]); else e.setAttribute(k, a[k]); }
+    (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+  function fmt(v, d) { if (v == null || !isFinite(v)) return '—'; return Number(v).toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function smart(v) { return fmt(v, v >= 100 ? 1 : v >= 10 ? 2 : v >= 1 ? 2 : 3); }
+  function rho(b) { return 0.998260062 + 0.003838154 * b + 0.0000141736838 * b * b + 0.0000000316524217 * b * b * b; }
+
+  /* ---------- вход ---------- */
+  function b64(s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); }
+  async function decrypt(pw) {
+    var km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    var key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(P.s), iterations: P.n, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(P.i) }, key, b64(P.c));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  async function login(pw, remember, silent) {
+    $('loginBtn').disabled = true; $('err').textContent = silent ? '' : 'Проверяю…';
+    try { D = await decrypt(pw); } catch (e) { $('loginBtn').disabled = false; $('err').textContent = silent ? '' : 'Неверный пароль'; store.del('nunchi_ttk_pw'); return; }
+    if (remember) store.set('nunchi_ttk_pw', pw);
+    $('login').hidden = true; $('app').hidden = false;
+    $('stamp').textContent = 'ТТК от ' + D.updated;
+    renderList();
+    var h = decodeURIComponent(location.hash.slice(1)); var t = D.tonics.filter(function (x) { return slug(x.name) === h; })[0];
+    if (t) open(t);
+  }
+  $('loginForm').addEventListener('submit', function (e) { e.preventDefault(); login($('pwd').value, $('remember').checked); });
+  $('logout').onclick = function () { store.del('nunchi_ttk_pw'); location.hash = ''; location.reload(); };
+  var saved = store.get('nunchi_ttk_pw', ''); if (saved) login(saved, true, true);
+
+  /* ---------- расчёт ---------- */
+  function slug(s) { return s.toLowerCase().replace(/[^a-zа-яё0-9]+/g, '-').replace(/^-|-$/g, ''); }
+  function settings(t) { var s = store.get('nunchi_ttk_' + slug(t.name), null) || {};
+    return { water: s.water != null ? s.water : t.water, sweetener: s.sweetener || t.sweetener, brix: s.brix != null ? s.brix : t.brixTarget, syrupBrix: s.syrupBrix != null ? s.syrupBrix : t.syrupBrix }; }
+  function calc(t, s) {
+    var ref = D.ref, Q = 0, R = 0, A = 0, QN = 0, rows = [];
+    t.items.forEach(function (it) {
+      var r = ref[it.name] || { ss: 0, acid: 0, density: 1, supplier: '' }, g = 0;
+      if (!it.auto) {
+        var k = it.unit === 'кг' ? 1000 : it.unit === 'л' ? 1000 * r.density : it.unit === 'мл' ? r.density : 1;
+        g = (it.value || 0) * k; Q += g; R += g * r.ss / 100; A += g * r.acid / 100; if (it.name.indexOf('Хинин') === 0) QN += g;
+      }
+      rows.push({ it: it, ref: r, g: g });
+    });
+    var B = s.brix || 0, b = s.syrupBrix || 66, num = B * (1000 + Q) - 100 * R;
+    var sugarG = Math.max(0, num / (100 - B)), syrupG = Math.max(0, num / (b - B)), syrupMl = syrupG / rho(b);
+    var useSugar = s.sweetener === 'Сахар', S = useSugar ? sugarG : syrupG, sb = useSugar ? 100 : b;
+    var mass = 1000 + Q + S, brix = (R + S * sb / 100) / mass * 100, vol = mass / rho(brix);
+    var yieldL = s.water * vol / 1000 * 0.98;
+    return { rows: rows, sugarG: sugarG, syrupG: syrupG, syrupMl: syrupMl, useSugar: useSugar, brix: brix,
+      yieldL: yieldL, bottles: Math.floor(yieldL * 1000 / (t.bottleMl || 200) + 1e-9), acid: A / vol * 1000, quinine: QN * 1e6 / vol, impossible: b <= B };
+  }
+
+  /* ---------- список ---------- */
+  function renderList() {
+    $('grid').replaceChildren.apply($('grid'), D.tonics.map(function (t) {
+      var s = settings(t), c = calc(t, s), cc = CAT[t.category] || 'var(--c-other)';
+      var sw = c.useSugar ? fmt(c.sugarG, 1) + ' г сахара на 1 л' : fmt(c.syrupMl, 1) + ' мл сиропа на 1 л';
+      return el('button', { cls: 'card', style: '--cc:' + cc, onclick: function () { open(t); } }, [
+        el('div', { cls: 'row' }, [el('span', {}, [el('span', { cls: 'dot', style: 'background:' + cc }), t.category]), el('span', { cls: 'pill ' + (t.status === 'Актив' ? 'ok' : 'rd'), text: t.status })]),
+        el('div', { cls: 't', text: t.name }),
+        el('div', { cls: 'row' }, [el('span', { cls: 'num', text: 'Brix ' + fmt(s.brix, 1) }), el('span', { cls: 'num', text: sw })])
+      ]);
+    }));
+  }
+
+  /* ---------- ТТК ---------- */
+  function open(t) { cur = t; location.hash = slug(t.name); $('list').hidden = true; $('ttk').hidden = false; fill(); render(); window.scrollTo(0, 0); }
+  function fill() { var s = settings(cur); $('w').value = s.water; $('bt').value = s.brix; $('sb').value = s.syrupBrix; }
+  function read() { var s = settings(cur); return { water: Math.max(0, +$('w').value || 0), sweetener: s.sweetener, brix: +$('bt').value || 0, syrupBrix: +$('sb').value || 0 }; }
+  function save(s) { store.set('nunchi_ttk_' + slug(cur.name), s); }
+  function kpi(l, v, sub, cls) { return el('div', { cls: 'kpi ' + (cls || '') }, [el('span', { text: l }), el('b', { text: v }), sub ? el('small', { text: sub }) : null]); }
+  function batch(g, unit, dens, W) { var tot = g * W; if (unit === 'л') return fmt(tot / 1000 / dens, 2) + ' л'; if (unit === 'кг' || tot >= 1000) return fmt(tot / 1000, tot >= 100000 ? 1 : 2) + ' кг'; return smart(tot) + ' г'; }
+  function render() {
+    var t = cur, s = read(), c = calc(t, s), cc = CAT[t.category] || 'var(--c-other)';
+    save(s);
+    $('tname').textContent = t.name;
+    $('tags').replaceChildren(el('span', { cls: 'pill rd' }, [el('span', { cls: 'dot', style: 'background:' + cc }), t.category]), el('span', { cls: 'pill ' + (t.status === 'Актив' ? 'ok' : 'rd'), text: t.status }), el('span', { cls: 'pill rd', text: 'Бутылка ' + t.bottleMl + ' мл' }));
+    Array.prototype.forEach.call($('sweet').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s.sweetener)); });
+    $('sbField').hidden = c.useSugar;
+    var W = s.water;
+    var main = c.useSugar
+      ? kpi('Сахар', fmt(c.sugarG * W / 1000, 1) + ' кг', fmt(c.sugarG, 1) + ' г на 1 л воды', 'hero')
+      : kpi('Сироп ВЛ', fmt(c.syrupMl * W / 1000, 1) + ' л', fmt(c.syrupMl, 1) + ' мл на 1 л воды · ' + fmt(c.syrupG * W / 1000, 1) + ' кг', 'hero');
+    $('kpis').replaceChildren(main,
+      kpi('Выход', fmt(c.yieldL, 0) + ' л', 'с учётом 2% потерь'),
+      kpi('Бутылок ' + t.bottleMl + ' мл', fmt(c.bottles, 0)),
+      kpi('Brix', fmt(c.brix, 1), c.impossible ? 'Brix сиропа ниже цели!' : 'кислотность ' + fmt(c.acid, 2) + ' г/л', c.impossible ? 'alert' : ''),
+      kpi('Хинин', fmt(c.quinine, 0) + ' мг/л', c.quinine > 80 ? 'близко к норме — проверить' : 'в напитке', c.quinine > 80 ? 'alert' : ''));
+    var groups = {}; c.rows.forEach(function (r) { var g = r.it.group || 'Прочее'; if (g === 'Сироп') g = 'Сахар'; (groups[g] = groups[g] || []).push(r); });
+    var body = [];
+    ORDER.concat(Object.keys(groups).filter(function (g) { return ORDER.indexOf(g) < 0; })).forEach(function (g) {
+      if (!groups[g]) return;
+      body.push(el('tr', { cls: 'grp' }, [el('td', { colspan: '4', text: GNAME[g] || g })]));
+      groups[g].forEach(function (r) {
+        var it = r.it, per, tot, cls = '';
+        if (it.auto) {
+          var isSugar = it.group === 'Сахар', on = isSugar === c.useSugar;
+          cls = 'sweet' + (on ? '' : ' off');
+          per = isSugar ? fmt(c.sugarG, 1) + ' г' : fmt(c.syrupMl, 1) + ' мл';
+          tot = on ? (isSugar ? fmt(c.sugarG * W / 1000, 2) + ' кг' : fmt(c.syrupMl * W / 1000, 2) + ' л') : 'не используется';
+        } else {
+          per = smart(it.value) + ' ' + it.unit;
+          tot = batch(r.g, it.outUnit, r.ref.density || 1, W);
+        }
+        var flag = /провер|\?/.test(it.comment || '');
+        body.push(el('tr', { cls: cls }, [
+          el('td', {}, [el('span', { cls: 'nm', text: it.name }), it.comment ? el('span', { cls: 'cm' + (flag ? ' flag' : ''), text: it.comment }) : null]),
+          el('td', { cls: 'n', text: per }), el('td', { cls: 'n', text: tot }), el('td', { text: r.ref.supplier || '' })]));
+      });
+    });
+    $('tbody').replaceChildren.apply($('tbody'), body);
+  }
+  ['w', 'bt', 'sb'].forEach(function (id) { $(id).addEventListener('input', render); });
+  Array.prototype.forEach.call(document.querySelectorAll('.stepper button'), function (b) {
+    b.addEventListener('click', function () { var inp = $(b.getAttribute('data-t')), d = +b.getAttribute('data-d');
+      inp.value = Math.max(0, Math.round(((+inp.value || 0) + d) * 10) / 10); render(); });
+  });
+  Array.prototype.forEach.call($('sweet').children, function (b) { b.addEventListener('click', function () { var s = read(); s.sweetener = b.getAttribute('data-v'); save(s); render(); }); });
+  $('reset').onclick = function () { store.del('nunchi_ttk_' + slug(cur.name)); fill(); render(); };
+  $('print').onclick = function () { window.print(); };
+  $('back').onclick = function () { cur = null; location.hash = ''; $('ttk').hidden = true; $('list').hidden = false; renderList(); };
+  window.addEventListener('hashchange', function () { if (!D) return; var h = decodeURIComponent(location.hash.slice(1));
+    if (!h && cur) $('back').click(); });
+})();
+</script>
+</body>
+</html>
