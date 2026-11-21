@@ -33,7 +33,15 @@ export PATH="$HOME/yc/bin:$PATH"
 KEYF=$(mktemp); printf '%s' "$YC_SA_KEY" > "$KEYF"
 yc config profile create robot >>"$LOG" 2>&1
 yc config set service-account-key "$KEYF" >>"$LOG" 2>&1 || fail "ключ Яндекса (YC_SA_KEY)"
-yc config set folder-id "$(echo "$YC_FOLDER_ID" | tr -d '[:space:]')" >>"$LOG" 2>&1 || fail "ID каталога (YC_FOLDER_ID)"
+FOLDER=$(echo "$YC_FOLDER_ID" | tr -d '[:space:]')
+if [ "${FOLDER:0:3}" != "b1g" ]; then
+  # в секрете не ID каталога — берём каталог, где живёт сервисный аккаунт
+  SA_ID=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["service_account_id"])' "$KEYF" 2>>"$LOG")
+  FOLDER=$(yc iam service-account get --id "$SA_ID" --format json 2>>"$LOG" | python3 -c 'import json,sys;print(json.load(sys.stdin)["folder_id"])' 2>>"$LOG")
+  [ -n "$FOLDER" ] || FOLDER="b1g6vsokqeducjk9l8vl"   # каталог default (из консоли)
+  echo "YC_FOLDER_ID не похож на ID каталога, использую $FOLDER" >>"$LOG"
+fi
+yc config set folder-id "$FOLDER" >>"$LOG" 2>&1 || fail "ID каталога (YC_FOLDER_ID)"
 
 if ! yc serverless function get --name "$NAME" >/dev/null 2>>"$LOG"; then
   yc serverless function create --name "$NAME" --description "Нунчи: рецепты, склад, варки" >>"$LOG" 2>&1 || fail "создание функции"
