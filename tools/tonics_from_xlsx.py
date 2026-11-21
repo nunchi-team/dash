@@ -1,4 +1,4 @@
-"""Читает Google-таблицу «Нунчи тоники — ТТК» (выгрузка .xlsx) и пишет JSON с рецептами для сайта."""
+"""Читает Google-таблицу ТТК линейки («Нунчи тоники — ТТК», «Нунчи кордиалы — ТТК»; выгрузка .xlsx) и пишет JSON с рецептами для сайта."""
 import json, sys, openpyxl
 
 def num(v):
@@ -13,7 +13,7 @@ def parse(path):
     cell = lambda r, c: rows[r][c] if r < len(rows) and c < len(rows[r]) else None
     # сводка: строка с заголовком «Тоник»
     summ = {}
-    i = next(k for k, r in enumerate(rows) if cell(k, 1) == "Тоник")
+    i = next(k for k, r in enumerate(rows) if cell(k, 1) in ("Тоник", "Кордиал", "Лимонад", "Джин"))
     k = i + 1
     while cell(k, 1):
         summ[cell(k, 1)] = dict(water=num(cell(k, 3)) or 0, sweetener=cell(k, 4) or "Сироп ВЛ",

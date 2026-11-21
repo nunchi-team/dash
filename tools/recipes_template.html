@@ -154,8 +154,8 @@ td.order { color: var(--bad); font-weight: 800; }
   <header class="top"><div class="top-in">
     <div class="brand"><span class="mark">Nunchi<sup>®</sup></span><small>the subtle art of drinks</small></div>
     <nav class="lines" aria-label="Линейки">
-      <button aria-pressed="true">Тоники</button>
-      <button disabled title="Скоро">Кордиалы</button>
+      <button data-line="tonics" aria-pressed="true">Тоники</button>
+      <button data-line="cordials" aria-pressed="false">Кордиалы</button>
       <button disabled title="Скоро">Лимонады</button>
       <button disabled title="Скоро">Джин</button>
     </nav>
@@ -164,8 +164,8 @@ td.order { color: var(--bad); font-weight: 800; }
   <main>
     <section id="list">
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
-        <h1>ТТК тоников</h1>
-        <p class="sub">Откройте тоник: задайте воду на партию, подсластитель и Brix — состав и количество сиропа пересчитаются сразу. Кнопкой «В план» отметьте вкусы, которые будете варить, — сайт посчитает сырьё на все сразу.</p>
+        <h1 id="listTitle">ТТК тоников</h1>
+        <p class="sub"><span id="listWhat">Откройте тоник</span>: задайте воду на партию, подсластитель и Brix — состав и количество сиропа пересчитаются сразу. Кнопкой «В план» отметьте вкусы, которые будете варить, — сайт посчитает сырьё на все сразу.</p>
       </div>
       <div id="stockInfo" style="margin-bottom:14px"></div>
       <div class="grid" id="grid"></div>
@@ -197,7 +197,7 @@ td.order { color: var(--bad); font-weight: 800; }
         <thead><tr><th>Ингредиент</th><th class="n">На 1 л воды</th><th class="n">На партию</th><th class="n" id="thStock">Склад</th><th>Поставщик</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table></div>
-      <p class="note">Выход учитывает 2% технологических потерь. Количество сиропа и сахара считается от Brix цели; прочие ингредиенты — по норме из ТТК.</p>
+      <p class="note" id="ttkNote">Выход учитывает 2% технологических потерь. Количество сиропа и сахара считается от Brix цели; прочие ингредиенты — по норме из ТТК.</p>
     </section>
 
     <section id="plan" hidden style="display:flex;flex-direction:column;gap:16px">
@@ -231,8 +231,11 @@ td.order { color: var(--bad); font-weight: 800; }
                 set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
                 del: function (k) { try { localStorage.removeItem(k); } catch (e) {} } };
   var CAT = { 'Ягодные': 'var(--c-berry)', 'Цитрусовые': 'var(--c-citrus)', 'Фруктовые': 'var(--c-fruit)', 'Травяные и цветочные': 'var(--c-herb)' };
-  var ORDER = ['Сахар', 'Сироп', 'Кислота', 'Хинин', 'Ароматизатор', 'CO2-экстракт', 'Травы', 'Сок'];
-  var GNAME = { 'CO2-экстракт': 'CO₂-экстракты', 'Травы': 'Травы и сухоцветы', 'Ароматизатор': 'Ароматизаторы', 'Кислота': 'Кислоты', 'Сок': 'Соки', 'Сахар': 'Подсластитель', 'Сироп': 'Подсластитель', 'Хинин': 'Хинин' };
+  var ORDER = ['Сахар', 'Сироп', 'Кислота', 'Хинин', 'Ароматизатор', 'CO2-экстракт', 'Экстракт', 'Травы', 'Сок', 'Гидроколлоид', 'Соль', 'Консервант'];
+  var LINE = { tonics: { list: 'ТТК тоников', one: 'тоник', all: '← Все тоники', tag: 'Тоник' }, cordials: { list: 'ТТК кордиалов', one: 'кордиал', all: '← Все кордиалы', tag: 'Кордиал' } };
+  var CORR = { 'Ягодные': [20, 25], 'Цитрусовые': [25, 28], 'Фруктовые': [28, 33], 'Травяные и цветочные': [33, 40] };
+  var line = 'tonics';
+  var GNAME = { 'CO2-экстракт': 'CO₂-экстракты', 'Травы': 'Травы и сухоцветы', 'Ароматизатор': 'Ароматизаторы', 'Кислота': 'Кислоты', 'Сок': 'Соки', 'Сахар': 'Подсластитель', 'Сироп': 'Подсластитель', 'Хинин': 'Хинин', 'Экстракт': 'Экстракты', 'Гидроколлоид': 'Стабилизаторы и эмульсии', 'Соль': 'Соль', 'Консервант': 'Консерванты' };
 
   function el(t, a, kids) { var e = document.createElement(t); a = a || {};
     for (var k in a) { if (a[k] == null) continue; if (k === 'text') e.textContent = a[k]; else if (k === 'cls') e.className = a[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), a[k]); else e.setAttribute(k, a[k]); }
@@ -254,6 +257,9 @@ td.order { color: var(--bad); font-weight: 800; }
     try { D = await decrypt(pw); } catch (e) { $('loginBtn').disabled = false; $('err').textContent = silent ? '' : 'Неверный пароль'; store.del('nunchi_ttk_pw'); return; }
     if (remember) store.set('nunchi_ttk_pw', pw);
     $('login').hidden = true; $('app').hidden = false;
+    if (!D.lines) D.lines = [{ key: 'tonics', title: 'Тоники', recipes: D.tonics, ref: D.ref }];
+    D.tonics = [];
+    D.lines.forEach(function (l) { l.recipes.forEach(function (r) { r._ref = l.ref; r._line = l.key; D.tonics.push(r); }); });
     $('stamp').textContent = 'ТТК от ' + D.updated;
     route();
   }
@@ -266,7 +272,7 @@ td.order { color: var(--bad); font-weight: 800; }
   function settings(t) { var s = store.get('nunchi_ttk_' + slug(t.name), null) || {};
     return { water: s.water != null ? s.water : t.water, sweetener: s.sweetener || t.sweetener, brix: s.brix != null ? s.brix : t.brixTarget, syrupBrix: s.syrupBrix != null ? s.syrupBrix : t.syrupBrix }; }
   function calc(t, s) {
-    var ref = D.ref, Q = 0, R = 0, A = 0, QN = 0, rows = [];
+    var ref = t._ref || D.ref, Q = 0, R = 0, A = 0, QN = 0, rows = [];
     t.items.forEach(function (it) {
       var r = ref[it.name] || { ss: 0, acid: 0, density: 1, supplier: '' }, g = 0;
       if (!it.auto) {
@@ -281,7 +287,8 @@ td.order { color: var(--bad); font-weight: 800; }
     var mass = 1000 + Q + S, brix = (R + S * sb / 100) / mass * 100, vol = mass / rho(brix);
     var yieldL = s.water * vol / 1000 * 0.98;
     return { rows: rows, sugarG: sugarG, syrupG: syrupG, syrupMl: syrupMl, useSugar: useSugar, brix: brix,
-      yieldL: yieldL, bottles: Math.floor(yieldL * 1000 / (t.bottleMl || 200) + 1e-9), acid: A / vol * 1000, quinine: QN * 1e6 / vol, impossible: b <= B };
+      yieldL: yieldL, bottles: Math.floor(yieldL * 1000 / (t.bottleMl || 200) + 1e-9), acid: A / vol * 1000, quinine: QN * 1e6 / vol, impossible: b <= B,
+      index: A > 0 ? brix / (A / mass * 100) : 0, drinkBrix: brix * rho(brix) / (rho(brix) + 4) };
   }
 
   /* ---------- склад ---------- */
@@ -374,16 +381,25 @@ td.order { color: var(--bad); font-weight: 800; }
     updPlanUi();
     if (h === 'plan') { cur = null; view('plan'); renderPlan(); return; }
     var t = byslug(h);
-    if (t) { cur = t; view('ttk'); fill(); render(); return; }
+    if (t) { cur = t; line = t._line || 'tonics'; navUi(); view('ttk'); fill(); render(); return; }
+    line = h === 'cordials' ? 'cordials' : 'tonics'; navUi();
     cur = null; view('list'); renderList();
   }
   window.addEventListener('hashchange', function () { if (D) route(); });
   function open(t) { location.hash = slug(t.name); }
+  function navUi() {
+    Array.prototype.forEach.call(document.querySelectorAll('.lines [data-line]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-line') === line)); });
+    $('listTitle').textContent = LINE[line].list; $('listWhat').textContent = 'Откройте ' + LINE[line].one;
+    $('back').textContent = LINE[line].all;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.lines [data-line]'), function (b) {
+    b.addEventListener('click', function () { location.hash = b.getAttribute('data-line') === 'cordials' ? 'cordials' : ''; if (D) route(); });
+  });
 
   /* ---------- список ---------- */
   function renderList() {
     $('stockInfo').replaceChildren.apply($('stockInfo'), [stockLine()].filter(Boolean));
-    $('grid').replaceChildren.apply($('grid'), D.tonics.map(function (t) {
+    $('grid').replaceChildren.apply($('grid'), D.tonics.filter(function (x) { return (x._line || 'tonics') === line; }).map(function (t) {
       var s = settings(t), c = calc(t, s), cc = CAT[t.category] || 'var(--c-other)', on = inPlan(t);
       var sw = c.useSugar ? fmt(c.sugarG, 1) + ' г сахара на 1 л' : fmt(c.syrupMl, 1) + ' мл сиропа на 1 л';
       var st = null;
@@ -406,6 +422,10 @@ td.order { color: var(--bad); font-weight: 800; }
   function fill() { var s = settings(cur); $('w').value = s.water; $('bt').value = s.brix; $('sb').value = s.syrupBrix; }
   function read() { var s = settings(cur); return { water: Math.max(0, +$('w').value || 0), sweetener: s.sweetener, brix: +$('bt').value || 0, syrupBrix: +$('sb').value || 0 }; }
   function save(s) { store.set('nunchi_ttk_' + slug(cur.name), s); }
+  function cordKpi(t, c) {
+    var cr = CORR[t.category], out = cr && (c.index < cr[0] || c.index > cr[1]);
+    return kpi('Индекс Brix/кисл.', fmt(c.index, 1), (cr ? 'коридор ' + cr[0] + '–' + cr[1] + ' · ' : '') + 'напиток 1:4 — ' + fmt(c.drinkBrix, 1) + ' Bx', out ? 'alert' : '');
+  }
   function kpi(l, v, sub, cls) { return el('div', { cls: 'kpi ' + (cls || '') }, [el('span', { text: l }), el('b', { text: v }), sub ? el('small', { text: sub }) : null]); }
   function batch(g, unit, dens, W) { var tot = g * W; if (unit === 'л') return fmt(tot / 1000 / dens, 2) + ' л'; if (unit === 'кг' || tot >= 1000) return fmt(tot / 1000, tot >= 100000 ? 1 : 2) + ' кг'; return smart(tot) + ' г'; }
   function stockCell(n) {
@@ -431,8 +451,11 @@ td.order { color: var(--bad); font-weight: 800; }
     $('kpis').replaceChildren(main,
       kpi('Выход', fmt(c.yieldL, 0) + ' л', 'с учётом 2% потерь'),
       kpi('Бутылок ' + t.bottleMl + ' мл', fmt(c.bottles, 0)),
-      kpi('Brix', fmt(c.brix, 1), c.impossible ? 'Brix сиропа ниже цели!' : 'кислотность ' + fmt(c.acid, 2) + ' г/л', c.impossible ? 'alert' : ''),
-      kpi('Хинин', fmt(c.quinine, 0) + ' мг/л', c.quinine > 80 ? 'близко к норме — проверить' : 'в напитке', c.quinine > 80 ? 'alert' : ''));
+      kpi('Brix', fmt(c.brix, 1), c.impossible ? 'Brix сиропа ниже цели!' : 'кислотность ' + fmt(c.acid, 2) + ' г/л', c.impossible || (t._line === 'cordials' && (c.brix < 44 - 1e-6 || c.brix > 46 + 1e-6)) ? 'alert' : ''),
+      t._line === 'cordials' ? cordKpi(t, c) : kpi('Хинин', fmt(c.quinine, 0) + ' мг/л', c.quinine > 80 ? 'близко к норме — проверить' : 'в напитке', c.quinine > 80 ? 'alert' : ''));
+    $('ttkNote').textContent = t._line === 'cordials'
+      ? 'Выход учитывает 2% технологических потерь. Сахар или сироп считается от Brix цели кордиала (стандарт 44–46); прочие ингредиенты — по норме из ТТК. Индекс = Brix ÷ кислотность %, напиток — 1 часть кордиала на 4 части воды.'
+      : 'Выход учитывает 2% технологических потерь. Количество сиропа и сахара считается от Brix цели; прочие ингредиенты — по норме из ТТК.';
     var k = hasStock() ? check(t, s) : null, nmap = {};
     if (k) k.needs.forEach(function (n) { nmap[n.name] = n; });
     $('thStock').hidden = !k;
@@ -487,8 +510,9 @@ td.order { color: var(--bad); font-weight: 800; }
     if (i >= 0) pl.splice(i, 1); else pl.push({ slug: sl, water: read().water });
     setPlan(pl); render();
   };
-  $('back').onclick = function () { location.hash = ''; };
-  $('back2').onclick = function () { location.hash = ''; };
+  $('back').onclick = function () { location.hash = line === 'cordials' ? 'cordials' : ''; };
+  $('back2').onclick = function () { location.hash = line === 'cordials' ? 'cordials' : ''; };
+  $('back2').textContent = '← К рецептам';
   $('planBtn').onclick = function () { location.hash = 'plan'; };
 
   /* ---------- экран плана ---------- */
@@ -511,7 +535,7 @@ td.order { color: var(--bad); font-weight: 800; }
       function mv(d) { var p2 = getPlan(), x = p2.splice(i, 1)[0]; p2.splice(i + d, 0, x); setPlan(p2); renderPlan(); }
       return el('div', { cls: 'batch' + (n && hasStock() ? ' isbad' : '') }, [
         el('div', { cls: 'no', text: String(i + 1) }),
-        el('div', {}, [el('div', { cls: 'nm', text: b.t.name, onclick: function () { open(b.t); } }),
+        el('div', {}, [el('div', { cls: 'row', style: 'justify-content:flex-start;margin-bottom:2px', text: (LINE[b.t._line] || LINE.tonics).tag }), el('div', { cls: 'nm', text: b.t.name, onclick: function () { open(b.t); } }),
           hasStock() ? el('span', { cls: 'pill ' + (n ? 'bad' : 'ok'), style: 'margin-top:6px', text: n ? 'не хватает ' + n + ' ' + plural(n, 'позиции', 'позиций', 'позиций') : 'сырья хватает ✓' }) : null]),
         el('div', { cls: 'mv' }, [
           el('button', { 'aria-label': 'Выше', text: '↑', disabled: i === 0 ? '' : null, onclick: function () { mv(-1); } }),
