@@ -98,6 +98,10 @@ if [ -f /tmp/tg_new ]; then
 fi
 HEALTH=$(curl -s -m 60 -X POST "$URL" -H 'Content-Type: application/json' -d '{"action":"health"}')
 echo "health: $HEALTH" >>"$LOG"
+PWJSON=$(python3 -c 'import json,os;print(json.dumps({"action":"data","pw":os.environ["RECIPES_PASSWORD"]}))')
+BROWSER=$(curl -s -m 60 -o /tmp/data.json -D /tmp/hdr.txt -w '%{http_code} %{time_total}s %{size_download}b' -X POST "$URL" \
+  -H 'Origin: https://team.nunchidrink.ru' -H 'Content-Type: text/plain' --data "$PWJSON")
+echo "как браузер: $BROWSER; CORS: $(grep -i '^access-control-allow-origin' /tmp/hdr.txt | tr -d '\r'); botReady: $(python3 -c 'import json;print(json.load(open("/tmp/data.json")).get("data",{}).get("botReady"))' 2>&1)" >>"$LOG"
 if echo "$HEALTH" | grep -q '"ok": true'; then
   write_status true "готово" "{\"url\": \"$URL\", \"health\": $HEALTH}"
 else

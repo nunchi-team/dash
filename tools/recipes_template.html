@@ -31,7 +31,11 @@ button, input { font: inherit; color: inherit; }
 .login .mark { font-size: 52px; } .login .mark sup { font-size: 18px; }
 .login .tg { color: var(--amber); font-size: 18px; font-weight: 600; margin: 4px 0 14px; }
 .login input[type=password] { font-size: 18px; padding: 16px 18px; border: 1.5px solid var(--line); border-radius: 18px; background: var(--bg); outline: none; }
-.login input[type=password]:focus { border-color: var(--ink); }
+.login input[type=password]:focus, .login #pwd:focus { border-color: var(--ink); }
+.pwwrap { position: relative; }
+.pwwrap input { width: 100%; font-size: 18px; padding: 16px 54px 16px 18px; border: 1.5px solid var(--line); border-radius: 18px; background: var(--bg); outline: none; }
+.eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 20px; cursor: pointer; padding: 8px; opacity: .55; line-height: 1; }
+.eye[aria-pressed="true"] { opacity: 1; }
 .btn { border: 0; background: var(--ink); color: var(--bg); border-radius: 14px; padding: 12px 18px; font-weight: 700; cursor: pointer; }
 .login .btn { font-size: 18px; padding: 16px; border-radius: 18px; }
 .err { color: var(--bad); font-size: 14px; min-height: 20px; margin: 0; }
@@ -153,7 +157,7 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
   <form id="loginForm">
     <div><p class="mark">Nunchi<sup>®</sup></p><p class="tg">Тонкое искусство рецептуры</p></div>
     <label for="pwd" class="sub" style="font-size:14px">Пароль</label>
-    <input id="pwd" type="password" autocomplete="current-password" required>
+    <div class="pwwrap"><input id="pwd" type="password" autocomplete="current-password" required><button type="button" class="eye" id="eye" aria-label="Показать пароль" title="Показать пароль">👁</button></div>
     <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)"><input type="checkbox" id="remember" checked> Запомнить на этом устройстве</label>
     <button class="btn" type="submit" id="loginBtn">Войти</button>
     <p class="err" id="err"></p>
@@ -178,6 +182,7 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
         <p class="sub"><span id="listWhat">Откройте тоник</span>: задайте воду на партию, подсластитель и Brix — состав и количество сиропа пересчитаются сразу. Кнопкой «В план» отметьте вкусы, которые будете варить, — сайт посчитает сырьё на все сразу.</p>
       </div>
       <div class="banner bad" id="liveErr" hidden style="margin-bottom:10px"></div>
+      <div class="banner" id="liveWhy" hidden style="margin-bottom:10px"></div>
       <div id="stockInfo" style="margin-bottom:14px"></div>
       <div class="grid" id="grid"></div>
       <div class="planbar" id="planbar" hidden></div>
@@ -281,15 +286,17 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
     var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(P.i) }, key, b64(P.c));
     return JSON.parse(new TextDecoder().decode(pt));
   }
+  var LIVE_ERR = '';
   async function fetchLive(pw) {
     if (!ROBOT || !window.fetch) return null;
-    var ctl = window.AbortController ? new AbortController() : null, timer = ctl && setTimeout(function () { ctl.abort(); }, 15000);
+    var ctl = window.AbortController ? new AbortController() : null, timer = ctl && setTimeout(function () { ctl.abort(); }, 30000);
     try {
       var r = await fetch(ROBOT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'data', pw: pw }), signal: ctl ? ctl.signal : undefined });
-      if (r.status === 401) return { bad: true };
-      if (!r.ok) return null;
-      return await r.json();
-    } catch (e) { return null; } finally { if (timer) clearTimeout(timer); }
+      if (r.status === 401) { LIVE_ERR = 'робот не принял пароль'; return { bad: true }; }
+      if (!r.ok) { LIVE_ERR = 'робот ответил ошибкой ' + r.status; return null; }
+      var j = await r.json(); LIVE_ERR = j && j.data ? '' : 'пустой ответ робота'; return j;
+    } catch (e) { LIVE_ERR = e && e.name === 'AbortError' ? 'робот не ответил за 30 секунд' : 'нет связи с роботом (' + (e && e.message || e) + ')'; return null; }
+    finally { if (timer) clearTimeout(timer); }
   }
   function showErrors() {
     var errs = (D.errors || []).slice();
@@ -307,6 +314,7 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
     $('stamp').textContent = D.live ? 'Из таблиц · ' + String(D.updated || '').slice(-5) : 'Копия от ' + D.updated;
     $('stamp').title = D.live ? 'Данные загружены из Google Таблиц' : 'Сохранённая копия; живые данные подгружаются';
     showErrors();
+    if (D.live) $('liveWhy').hidden = true;
     route();
   }
   async function login(pw, remember, silent) {
@@ -316,8 +324,10 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
     if (copy) {
       PW = pw; if (remember) store.set('nunchi_ttk_pw', pw);
       enter(copy);                                   // сайт открывается сразу на сохранённой копии
+      $('stamp').textContent = 'Копия от ' + copy.updated + ' · загружаю…';
       fetchLive(pw).then(function (l) {              // и следом подтягивает живые данные из таблиц
-        if (l && l.data) { try { enter(l.data); } catch (e) { console.warn(e); enter(copy); } }
+        if (l && l.data) { try { enter(l.data); } catch (e) { LIVE_ERR = 'ошибка в данных: ' + e.message; enter(copy); } }
+        if (!D.live) { $('stamp').textContent = 'Копия от ' + copy.updated + ' ⚠️'; $('stamp').title = 'Живые данные не загрузились: ' + LIVE_ERR; $('liveWhy').textContent = '⚠️ Живые данные из таблиц не загрузились: ' + LIVE_ERR + '. Показана копия; публикация в группу недоступна.'; $('liveWhy').hidden = false; }
       });
       return;
     }
@@ -326,6 +336,13 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
     if (live && live.data) { PW = pw; if (remember) store.set('nunchi_ttk_pw', pw); enter(live.data); return; }
     $('loginBtn').disabled = false; $('err').textContent = silent ? '' : 'Неверный пароль'; store.del('nunchi_ttk_pw');
   }
+  $('eye').onclick = function () {
+    var show = $('pwd').type === 'password';
+    $('pwd').type = show ? 'text' : 'password';
+    $('eye').setAttribute('aria-pressed', String(show));
+    $('eye').title = show ? 'Скрыть пароль' : 'Показать пароль';
+    $('pwd').focus();
+  };
   $('loginForm').addEventListener('submit', function (e) { e.preventDefault(); login($('pwd').value, $('remember').checked); });
   $('logout').onclick = function () { store.del('nunchi_ttk_pw'); location.hash = ''; location.reload(); };
   var saved = store.get('nunchi_ttk_pw', ''); if (saved) login(saved, true, true);
