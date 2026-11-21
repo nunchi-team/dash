@@ -37,6 +37,13 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: bash robot/deploy.sh
 
+      - name: Проверка добавления вкуса на тестовых копиях
+        if: hashFiles('robot/test/request.json') != ''
+        env:
+          BRIDGE_URL: ${{ secrets.BRIDGE_URL }}
+          BRIDGE_KEY: ${{ secrets.BRIDGE_KEY }}
+        run: python3 tools/test_add.py && git rm -q robot/test/request.json
+
       - name: Обновить запасную копию сайта из таблиц
         env:
           BRIDGE_URL: ${{ secrets.BRIDGE_URL }}
@@ -48,7 +55,7 @@ jobs:
         run: |
           git config user.name "nunchi-robot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for f in robot/status robot/endpoint.json robot/fn/tg_chat.json recipes/index.html; do [ -e "$f" ] && git add -A "$f"; done
+          for f in robot/status robot/endpoint.json robot/fn/tg_chat.json robot/test recipes/index.html; do [ -e "$f" ] && git add -A "$f"; done
           if ! git diff --cached --quiet; then
             git commit -m "Робот: обновление данных и статуса"
             for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done

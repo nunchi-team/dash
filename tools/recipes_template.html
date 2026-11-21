@@ -145,6 +145,26 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
 .pub .row2 { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 .btn.tg { background: #2AABEE; color: #fff; }
 @media (max-width: 520px) { .pub .two { grid-template-columns: 1fr; } }
+.inp { width: 100%; border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 12px; background: var(--bg); font-size: 16px; outline: none; min-width: 0; }
+.inp:focus { border-color: var(--ink); }
+select.inp { appearance: auto; }
+.nt td { vertical-align: middle; }
+.nt .inp { padding: 8px 10px; border-radius: 10px; font-size: 15px; }
+.nt td.nm2 { min-width: 200px; }
+.nt td.v { width: 120px; } .nt td.u { width: 84px; }
+.nt tr.newref td { background: color-mix(in srgb, var(--amber) 8%, transparent); }
+.newfields { display: grid; grid-template-columns: repeat(4, minmax(90px, 1fr)); gap: 6px; margin-top: 6px; }
+.newfields label { font-size: 11px; color: var(--muted); font-weight: 700; display: flex; flex-direction: column; gap: 3px; }
+.x { border: 0; background: none; font-size: 18px; cursor: pointer; color: var(--muted); padding: 4px 8px; }
+@media (max-width: 640px) {
+  .nt thead { display: none; }
+  .nt tr { display: grid; grid-template-columns: 1fr 76px 36px; gap: 6px; padding: 10px; border-bottom: 1px solid var(--line); }
+  .nt td { border: 0; padding: 0; }
+  .nt td.nm2 { grid-column: 1 / -1; min-width: 0; }
+  .nt td.v { width: auto; } .nt td.u { width: auto; }
+  .nt td:nth-child(4) { display: none; }
+  .newfields { grid-template-columns: 1fr 1fr; }
+}
 @media print {
   .top, .back, .actions, .controls, .meta, .planbar, .mv, .pbtn, dialog { display: none !important; }
   body { font-size: 12px; } main { padding: 0; } .panel { background: none; padding: 0; } .kpi { border: 1px solid #ccc; }
@@ -178,7 +198,7 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
   <main>
     <section id="list">
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
-        <h1 id="listTitle">ТТК тоников</h1>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h1 id="listTitle">ТТК тоников</h1><button class="btn" id="newBtn" hidden>+ Новый вкус</button></div>
         <p class="sub"><span id="listWhat">Откройте тоник</span>: задайте воду на партию, подсластитель и Brix — состав и количество сиропа пересчитаются сразу. Кнопкой «В план» отметьте вкусы, которые будете варить, — сайт посчитает сырьё на все сразу.</p>
       </div>
       <div class="banner bad" id="liveErr" hidden style="margin-bottom:10px"></div>
@@ -214,6 +234,35 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
         <tbody id="tbody"></tbody>
       </table></div>
       <p class="note" id="ttkNote">Выход учитывает 2% технологических потерь. Количество сиропа и сахара считается от Brix цели; прочие ингредиенты — по норме из ТТК.</p>
+    </section>
+
+    <section id="newv" hidden style="display:flex;flex-direction:column;gap:16px">
+      <button class="link back" id="back3">← К рецептам</button>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1>Новый вкус</h1>
+        <p class="sub">Соберите рецепт — баланс считается сразу. Нормы на 1 л воды, сахар или сироп рассчитываются от Brix цели. После «Сохранить» робот допишет карточку в таблицу линейки на Google Диске со статусом R&amp;D.</p>
+      </div>
+      <div class="panel">
+        <div class="controls">
+          <div class="field"><label>Линейка</label><div class="seg" id="nLine"><button type="button" data-v="tonics">Тоники</button><button type="button" data-v="cordials">Кордиалы</button></div></div>
+          <div class="field" style="grid-column: span 2"><label for="nName">Название</label><input class="inp" id="nName" placeholder="например, Юдзу — Базилик"></div>
+          <div class="field"><label for="nCat">Категория</label><select class="inp" id="nCat"><option>Ягодные</option><option>Цитрусовые</option><option>Фруктовые</option><option>Травяные и цветочные</option></select></div>
+          <div class="field"><label for="nStatus">Статус</label><select class="inp" id="nStatus"><option>R&amp;D</option><option>Актив</option></select></div>
+          <div class="field"><label for="nBottle">Бутылка, мл</label><input class="inp" id="nBottle" type="number" inputmode="decimal"></div>
+          <div class="field"><label for="nWater">Вода на партию, л</label><input class="inp" id="nWater" type="number" inputmode="decimal"></div>
+          <div class="field"><label>Подсластитель</label><div class="seg" id="nSweet"><button type="button" data-v="Сироп ВЛ">Сироп ВЛ</button><button type="button" data-v="Сахар">Сахар</button></div></div>
+          <div class="field"><label for="nBrix">Brix цель</label><input class="inp" id="nBrix" type="number" step="0.1" inputmode="decimal"></div>
+          <div class="field" id="nSbF"><label for="nSb">Brix сиропа</label><input class="inp" id="nSb" type="number" step="0.5" inputmode="decimal"></div>
+        </div>
+        <div class="kpis" id="nKpis"></div>
+      </div>
+      <div class="tw"><table class="nt">
+        <thead><tr><th>Ингредиент</th><th class="n">Норма на 1 л воды</th><th>Ед.</th><th class="n">На партию</th><th></th></tr></thead>
+        <tbody id="nBody"></tbody>
+      </table></div>
+      <datalist id="nRef"></datalist>
+      <div class="actions"><button class="btn ghost" id="nAdd">+ Ингредиент</button><button class="btn" id="nSave">Сохранить в таблицу</button><button class="link" id="nClear">Очистить</button></div>
+      <p class="err" id="nErr" style="margin:0"></p>
     </section>
 
     <section id="plan" hidden style="display:flex;flex-direction:column;gap:16px">
@@ -287,11 +336,11 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
     return JSON.parse(new TextDecoder().decode(pt));
   }
   var LIVE_ERR = '';
-  async function fetchLive(pw) {
+  async function fetchLive(pw, fresh) {
     if (!ROBOT || !window.fetch) return null;
     var ctl = window.AbortController ? new AbortController() : null, timer = ctl && setTimeout(function () { ctl.abort(); }, 30000);
     try {
-      var r = await fetch(ROBOT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'data', pw: pw }), signal: ctl ? ctl.signal : undefined });
+      var r = await fetch(ROBOT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'data', pw: pw, fresh: !!fresh }), signal: ctl ? ctl.signal : undefined });
       if (r.status === 401) { LIVE_ERR = 'робот не принял пароль'; return { bad: true }; }
       if (!r.ok) { LIVE_ERR = 'робот ответил ошибкой ' + r.status; return null; }
       var j = await r.json(); LIVE_ERR = j && j.data ? '' : 'пустой ответ робота'; return j;
@@ -456,11 +505,12 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
   function plural(n, a, b, c) { n = Math.abs(n) % 100; var n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; }
 
   /* ---------- экраны ---------- */
-  function view(v) { $('list').hidden = v !== 'list'; $('ttk').hidden = v !== 'ttk'; $('plan').hidden = v !== 'plan'; window.scrollTo(0, 0); }
+  function view(v) { $('list').hidden = v !== 'list'; $('ttk').hidden = v !== 'ttk'; $('plan').hidden = v !== 'plan'; $('newv').hidden = v !== 'new'; window.scrollTo(0, 0); }
   function route() {
     var h = decodeURIComponent(location.hash.slice(1));
     updPlanUi();
     if (h === 'plan') { cur = null; view('plan'); renderPlan(); return; }
+    if (h === 'new') { cur = null; view('new'); openNew(); return; }
     var t = byslug(h);
     if (t) { cur = t; line = t._line || 'tonics'; navUi(); view('ttk'); fill(); render(); return; }
     line = h === 'cordials' ? 'cordials' : 'tonics'; navUi();
@@ -470,6 +520,7 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
   function open(t) { location.hash = slug(t.name); }
   function navUi() {
     Array.prototype.forEach.call(document.querySelectorAll('.lines [data-line]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-line') === line)); });
+    $('newBtn').hidden = !ROBOT;
     $('listTitle').textContent = LINE[line].list; $('listWhat').textContent = 'Откройте ' + LINE[line].one;
     $('back').textContent = LINE[line].all;
   }
@@ -524,7 +575,7 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
     $('tags').replaceChildren(el('span', { cls: 'pill rd' }, [el('span', { cls: 'dot', style: 'background:' + cc }), t.category]), el('span', { cls: 'pill ' + (t.status === 'Актив' ? 'ok' : 'rd'), text: t.status }), el('span', { cls: 'pill rd', text: 'Бутылка ' + t.bottleMl + ' мл' }));
     Array.prototype.forEach.call($('sweet').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s.sweetener)); });
     $('sbField').hidden = c.useSugar;
-    $('pubOne').hidden = !(D.live && D.botReady);
+    $('pubOne').hidden = !(ROBOT && D.botReady !== false);
     var on = inPlan(t); $('toPlan').textContent = on ? '✓ В плане варок' : '+ Добавить в план варок';
     var W = s.water;
     var main = c.useSugar
@@ -642,7 +693,7 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
     }) : [el('tr', {}, [el('td', { colspan: '5', text: 'Всё сырьё есть на складе.' })])]);
     $('showAll').textContent = showAll ? 'Показать только то, что заказать' : 'Показать всё сырьё плана (' + pc.items.length + ')';
     $('copyOrder').hidden = !pc.toOrder.length;
-    $('pubPlan').hidden = !(D.live && D.botReady);
+    $('pubPlan').hidden = !(ROBOT && D.botReady !== false);
     $('copyOrder').onclick = function () {
       var txt = 'Заказ сырья — план: ' + pc.batches.map(function (b) { return b.t.name + ' (' + fmt(b.p.water, 0) + ' л)'; }).join(', ') + '\n' +
         pc.toOrder.map(function (o) { return '• ' + o.name + ' — ' + show(o.order, o.unit, o.dens) + (o.supplier ? ' (' + o.supplier + ')' : ''); }).join('\n');
@@ -710,6 +761,115 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
   $('pubPlan').onclick = function () {
     var pc = planCalc(); if (!pc.batches.length) return;
     openPub(pc.batches.map(function (b) { return { t: b.t, s: b.s }; }), 'Опубликовать план · ' + pc.batches.length + ' ' + plural(pc.batches.length, 'варка', 'варки', 'варок'));
+  };
+
+  /* ---------- новый вкус ---------- */
+  var DEF = { tonics: { bottle: 200, water: 2000, sweet: 'Сироп ВЛ', brix: 6, cat: 'Цитрусовые' }, cordials: { bottle: 750, water: 500, sweet: 'Сахар', brix: 45, cat: 'Ягодные' } };
+  var NG = ['Кислота', 'Хинин', 'Ароматизатор', 'CO2-экстракт', 'Экстракт', 'Травы', 'Сок', 'Гидроколлоид', 'Соль', 'Консервант'];
+  var NV = null;
+  function lineRef(k) { var l = (D.lines || []).filter(function (x) { return x.key === k; })[0]; return (l && l.ref) || {}; }
+  function blankNew(k) { var d = DEF[k]; return { line: k, name: '', cat: d.cat, status: 'R&D', bottle: d.bottle, water: d.water, sweet: d.sweet, brix: d.brix, sb: 67, items: [{ name: '', value: '', unit: 'г', nr: {} }] }; }
+  function saveNew() { store.set('nunchi_new_draft', NV); }
+  function openNew() {
+    NV = store.get('nunchi_new_draft', null) || blankNew(line === 'cordials' ? 'cordials' : 'tonics');
+    $('nErr').textContent = ''; $('nSave').disabled = false; $('nSave').textContent = 'Сохранить в таблицу';
+    fillNew(); renderNew();
+  }
+  function fillNew() {
+    $('nName').value = NV.name; $('nCat').value = NV.cat; $('nStatus').value = NV.status; $('nBottle').value = NV.bottle;
+    $('nWater').value = NV.water; $('nBrix').value = NV.brix; $('nSb').value = NV.sb;
+    var ref = lineRef(NV.line);
+    $('nRef').replaceChildren.apply($('nRef'), Object.keys(ref).filter(function (n) { return ['Сахар', 'Сироп'].indexOf(ref[n].group) < 0; }).sort().map(function (n) { return el('option', { value: n }); }));
+  }
+  function readNew() {
+    NV.name = $('nName').value; NV.cat = $('nCat').value; NV.status = $('nStatus').value; NV.bottle = +$('nBottle').value || DEF[NV.line].bottle;
+    NV.water = +$('nWater').value || 0; NV.brix = +$('nBrix').value || 0; NV.sb = +$('nSb').value || 67;
+  }
+  function newRecipe() {
+    var ref = lineRef(NV.line), merged = Object.assign({}, ref), newRef = [];
+    NV.items.forEach(function (it) {
+      var n = (it.name || '').trim(); if (!n || ref[n]) return;
+      var r = { name: n, group: it.nr.group || '', ss: +it.nr.ss || 0, acid: +it.nr.acid || 0, density: +it.nr.density || 1, supplier: it.nr.supplier || '' };
+      merged[n] = r; newRef.push(r);
+    });
+    var items = [{ name: 'Сахар', group: 'Сахар', auto: true }, { name: 'Сироп ВЛ', group: 'Сироп', auto: true }];
+    NV.items.forEach(function (it) {
+      var n = (it.name || '').trim(); if (!n || !(+it.value > 0)) return;
+      var g = (merged[n] || {}).group || '';
+      if (g === 'Сахар' || g === 'Сироп') return;
+      var dens = (merged[n] || {}).density || 1, gpl = (+it.value) * (it.unit === 'кг' ? 1000 : it.unit === 'л' ? 1000 * dens : it.unit === 'мл' ? dens : 1);
+      var ou = (it.unit === 'л' || it.unit === 'мл') ? 'л' : (gpl * (NV.water || 0) >= 1000 ? 'кг' : 'г');
+      items.push({ name: n, group: g, value: +it.value, unit: it.unit, outUnit: ou, comment: it.comment || '' });
+    });
+    var t = { name: NV.name.trim(), status: NV.status, category: NV.cat, bottleMl: NV.bottle, items: items, _ref: merged, _line: NV.line };
+    var s = { water: NV.water, sweetener: NV.sweet, brix: NV.brix, syrupBrix: NV.sb };
+    return { t: t, s: s, newRef: newRef };
+  }
+  function renderNew() {
+    Array.prototype.forEach.call($('nLine').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === NV.line)); });
+    Array.prototype.forEach.call($('nSweet').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === NV.sweet)); });
+    $('nSbF').hidden = NV.sweet === 'Сахар';
+    var ref = lineRef(NV.line), R = newRecipe(), c = calc(R.t, R.s), W = NV.water || 0;
+    var main = c.useSugar ? kpi('Сахар', fmt(c.sugarG, 1) + ' г', 'на 1 л воды · ' + fmt(c.sugarG * W / 1000, 1) + ' кг на партию', 'hero')
+                          : kpi('Сироп ВЛ', fmt(c.syrupMl, 1) + ' мл', 'на 1 л воды · ' + fmt(c.syrupMl * W / 1000, 1) + ' л на партию', 'hero');
+    var extra = NV.line === 'cordials' ? cordKpi(R.t, c) : kpi('Хинин', fmt(c.quinine, 0) + ' мг/л', c.quinine > 80 ? 'близко к норме — проверить' : 'в напитке', c.quinine > 80 ? 'alert' : '');
+    $('nKpis').replaceChildren(main, kpi('Brix', fmt(c.brix, 1), c.impossible ? 'Brix сиропа ниже цели!' : 'кислотность ' + fmt(c.acid, 2) + ' г/л', c.impossible ? 'alert' : ''),
+      extra, kpi('Выход', fmt(c.yieldL, 0) + ' л', fmt(c.bottles, 0) + ' бут. по ' + NV.bottle + ' мл'));
+    var rowsG = {}; c.rows.forEach(function (r) { rowsG[r.it.name] = r; });
+    $('nBody').replaceChildren.apply($('nBody'), NV.items.map(function (it, i) {
+      var n = (it.name || '').trim(), isNew = n && !ref[n], r = rowsG[n];
+      var nameInp = el('input', { class: 'inp', list: 'nRef', value: it.name, placeholder: 'начните вводить…' });
+      nameInp.addEventListener('input', function () { it.name = nameInp.value; saveNew(); renderNewSoon(); });
+      var v = el('input', { class: 'inp', type: 'number', inputmode: 'decimal', step: 'any', value: it.value });
+      v.addEventListener('input', function () { it.value = v.value; saveNew(); renderNewSoon(); });
+      var u = el('select', { class: 'inp' }, ['г', 'кг', 'мл', 'л'].map(function (x) { var o = el('option', { text: x }); if (x === it.unit) o.selected = true; return o; }));
+      u.addEventListener('change', function () { it.unit = u.value; saveNew(); renderNew(); });
+      var tot = r && !r.it.auto ? batch(r.g, (r.it.outUnit || 'г'), (r.ref.density || 1), W) : '—';
+      var del = el('button', { class: 'x', type: 'button', 'aria-label': 'Удалить', text: '✕', onclick: function () { NV.items.splice(i, 1); if (!NV.items.length) NV.items.push({ name: '', value: '', unit: 'г', nr: {} }); saveNew(); renderNew(); } });
+      var cellName = el('td', { cls: 'nm2' }, [nameInp]);
+      if (isNew) {
+        var f = function (lbl, key, typ, opts) {
+          var inp = opts ? el('select', { class: 'inp' }, [el('option', { value: '', text: '— группа —' })].concat(opts.map(function (x) { var o = el('option', { text: x }); if (x === it.nr[key]) o.selected = true; return o; })))
+                         : el('input', { class: 'inp', type: typ || 'text', step: 'any', value: it.nr[key] == null ? '' : it.nr[key], placeholder: typ === 'number' ? '0' : '' });
+          inp.addEventListener(opts ? 'change' : 'input', function () { it.nr[key] = inp.value; saveNew(); renderNewSoon(); });
+          return el('label', {}, [lbl, inp]);
+        };
+        cellName.appendChild(el('div', { cls: 'cm', text: 'Новое сырьё — допишется в справочник и на склад:' }));
+        cellName.appendChild(el('div', { cls: 'newfields' }, [f('Группа', 'group', null, NG), f('СВ, %', 'ss', 'number'), f('Кисл., %', 'acid', 'number'), f('Плотн., кг/л', 'density', 'number')]));
+      }
+      return el('tr', { cls: isNew ? 'newref' : '' }, [cellName, el('td', { cls: 'v' }, [v]), el('td', { cls: 'u' }, [u]), el('td', { cls: 'n', text: tot }), el('td', {}, [del])]);
+    }));
+  }
+  var rnT = null; function renderNewSoon() { clearTimeout(rnT); rnT = setTimeout(function () { var a = document.activeElement, pos = a && a.selectionStart; var idx = a && Array.prototype.indexOf.call(document.querySelectorAll('#newv input, #newv select'), a); renderNew(); if (idx >= 0) { var b = document.querySelectorAll('#newv input, #newv select')[idx]; if (b) { b.focus(); try { if (pos != null) b.setSelectionRange(pos, pos); } catch (e) {} } } }, 350); }
+  ['nName', 'nCat', 'nStatus', 'nBottle', 'nWater', 'nBrix', 'nSb'].forEach(function (id) { $(id).addEventListener('input', function () { readNew(); saveNew(); renderNewSoon(); }); });
+  Array.prototype.forEach.call($('nLine').children, function (b) { b.addEventListener('click', function () {
+    var k = b.getAttribute('data-v'); if (k === NV.line) return; readNew(); var d = DEF[k];
+    NV.line = k; NV.bottle = d.bottle; NV.water = d.water; NV.sweet = d.sweet; NV.brix = d.brix; NV.cat = NV.cat || d.cat; saveNew(); fillNew(); renderNew(); }); });
+  Array.prototype.forEach.call($('nSweet').children, function (b) { b.addEventListener('click', function () { readNew(); NV.sweet = b.getAttribute('data-v'); saveNew(); renderNew(); }); });
+  $('nAdd').onclick = function () { readNew(); NV.items.push({ name: '', value: '', unit: 'г', nr: {} }); saveNew(); renderNew(); var ins = document.querySelectorAll('#nBody .nm2 input'); if (ins.length) ins[ins.length - 1].focus(); };
+  $('nClear').onclick = function () { NV = blankNew(NV.line); saveNew(); fillNew(); renderNew(); };
+  $('back3').onclick = function () { location.hash = line === 'cordials' ? 'cordials' : ''; };
+  $('newBtn').onclick = function () { location.hash = 'new'; };
+  $('nSave').onclick = async function () {
+    readNew(); var R = newRecipe(); $('nErr').textContent = '';
+    if (R.t.name.length < 2) { $('nErr').textContent = 'Укажите название вкуса.'; return; }
+    if (R.t.items.length < 3) { $('nErr').textContent = 'Добавьте хотя бы один ингредиент с нормой.'; return; }
+    var noGroup = R.newRef.filter(function (n) { return !n.group; });
+    if (noGroup.length) { $('nErr').textContent = 'Выберите группу для нового сырья: ' + noGroup.map(function (n) { return n.name; }).join(', '); return; }
+    var body = { action: 'addRecipe', pw: PW, line: NV.line, recipe: {
+      name: R.t.name, status: NV.status, category: NV.cat, bottleMl: NV.bottle, water: NV.water, sweetener: NV.sweet, brixTarget: NV.brix, syrupBrix: NV.sb,
+      items: R.t.items.filter(function (x) { return !x.auto; }).map(function (x) { return { name: x.name, value: x.value, unit: x.unit, outUnit: x.outUnit, comment: x.comment }; }),
+      newRef: R.newRef } };
+    $('nSave').disabled = true; $('nSave').textContent = 'Записываю в таблицу…';
+    try {
+      var r = await fetch(ROBOT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok || !j.ok) throw new Error(j.error || ('ошибка ' + r.status));
+      $('nSave').textContent = 'Сохранено ✓ Обновляю…';
+      store.del('nunchi_new_draft');
+      var live = await fetchLive(PW, true); if (live && live.data) enter(live.data);
+      var t = byslug(slug(R.t.name)); location.hash = t ? slug(t.name) : (NV.line === 'cordials' ? 'cordials' : '');
+    } catch (e) { $('nSave').disabled = false; $('nSave').textContent = 'Сохранить в таблицу'; $('nErr').textContent = 'Не сохранилось: ' + e.message; }
   };
 })();
 </script>
