@@ -767,6 +767,12 @@ select.inp { appearance: auto; }
   var DEF = { tonics: { bottle: 200, water: 2000, sweet: 'Сироп ВЛ', brix: 6, cat: 'Цитрусовые' }, cordials: { bottle: 750, water: 500, sweet: 'Сахар', brix: 45, cat: 'Ягодные' } };
   var NG = ['Кислота', 'Хинин', 'Ароматизатор', 'CO2-экстракт', 'Экстракт', 'Травы', 'Сок', 'Гидроколлоид', 'Соль', 'Консервант'];
   var NV = null;
+  function knownElse(k) {   // сырьё из справочников других линеек (со свойствами) и со склада (только название)
+    var out = {};
+    (D.lines || []).forEach(function (l) { if (l.key === k) return; Object.keys(l.ref || {}).forEach(function (n) { if (!out[n]) out[n] = Object.assign({ from: l.title }, l.ref[n]); }); });
+    Object.keys(D.stock || {}).forEach(function (n) { if (!out[n]) out[n] = { from: 'склад', stockOnly: true }; });
+    return out;
+  }
   function lineRef(k) { var l = (D.lines || []).filter(function (x) { return x.key === k; })[0]; return (l && l.ref) || {}; }
   function blankNew(k) { var d = DEF[k]; return { line: k, name: '', cat: d.cat, status: 'R&D', bottle: d.bottle, water: d.water, sweet: d.sweet, brix: d.brix, sb: 67, items: [{ name: '', value: '', unit: 'г', nr: {} }] }; }
   function saveNew() { store.set('nunchi_new_draft', NV); }
@@ -779,7 +785,10 @@ select.inp { appearance: auto; }
     $('nName').value = NV.name; $('nCat').value = NV.cat; $('nStatus').value = NV.status; $('nBottle').value = NV.bottle;
     $('nWater').value = NV.water; $('nBrix').value = NV.brix; $('nSb').value = NV.sb;
     var ref = lineRef(NV.line);
-    $('nRef').replaceChildren.apply($('nRef'), Object.keys(ref).filter(function (n) { return ['Сахар', 'Сироп'].indexOf(ref[n].group) < 0; }).sort().map(function (n) { return el('option', { value: n }); }));
+    var other = knownElse(NV.line), names = {};
+    Object.keys(ref).forEach(function (n) { if (['Сахар', 'Сироп'].indexOf(ref[n].group) < 0) names[n] = ''; });
+    Object.keys(other).forEach(function (n) { if (!(n in names) && ['Сахар', 'Сироп'].indexOf(other[n].group) < 0) names[n] = other[n].stockOnly ? 'со склада' : 'из справочника: ' + other[n].from; });
+    $('nRef').replaceChildren.apply($('nRef'), Object.keys(names).sort(function (a, b) { return a.localeCompare(b, 'ru'); }).map(function (n) { return el('option', { value: n, label: names[n] ? n + ' — ' + names[n] : n }); }));
   }
   function readNew() {
     NV.name = $('nName').value; NV.cat = $('nCat').value; NV.status = $('nStatus').value; NV.bottle = +$('nBottle').value || DEF[NV.line].bottle;
@@ -789,7 +798,10 @@ select.inp { appearance: auto; }
     var ref = lineRef(NV.line), merged = Object.assign({}, ref), newRef = [];
     NV.items.forEach(function (it) {
       var n = (it.name || '').trim(); if (!n || ref[n]) return;
-      var r = { name: n, group: it.nr.group || '', ss: +it.nr.ss || 0, acid: +it.nr.acid || 0, density: +it.nr.density || 1, supplier: it.nr.supplier || '' };
+      var o = knownElse(NV.line)[n];
+      var r = o && !o.stockOnly
+        ? { name: n, group: o.group || '', ss: +o.ss || 0, acid: +o.acid || 0, density: +o.density || 1, supplier: o.supplier || '' }
+        : { name: n, group: it.nr.group || '', ss: +it.nr.ss || 0, acid: +it.nr.acid || 0, density: +it.nr.density || 1, supplier: it.nr.supplier || '' };
       merged[n] = r; newRef.push(r);
     });
     var items = [{ name: 'Сахар', group: 'Сахар', auto: true }, { name: 'Сироп ВЛ', group: 'Сироп', auto: true }];
@@ -827,14 +839,17 @@ select.inp { appearance: auto; }
       var tot = r && !r.it.auto ? batch(r.g, (r.it.outUnit || 'г'), (r.ref.density || 1), W) : '—';
       var del = el('button', { class: 'x', type: 'button', 'aria-label': 'Удалить', text: '✕', onclick: function () { NV.items.splice(i, 1); if (!NV.items.length) NV.items.push({ name: '', value: '', unit: 'г', nr: {} }); saveNew(); renderNew(); } });
       var cellName = el('td', { cls: 'nm2' }, [nameInp]);
-      if (isNew) {
+      var other = isNew ? knownElse(NV.line)[n] : null;
+      if (isNew && other && !other.stockOnly) {
+        cellName.appendChild(el('div', { cls: 'cm', text: 'Из справочника «' + other.from + '» (' + other.group + ') — допишется в эту таблицу.' }));
+      } else if (isNew) {
         var f = function (lbl, key, typ, opts) {
           var inp = opts ? el('select', { class: 'inp' }, [el('option', { value: '', text: '— группа —' })].concat(opts.map(function (x) { var o = el('option', { text: x }); if (x === it.nr[key]) o.selected = true; return o; })))
                          : el('input', { class: 'inp', type: typ || 'text', step: 'any', value: it.nr[key] == null ? '' : it.nr[key], placeholder: typ === 'number' ? '0' : '' });
           inp.addEventListener(opts ? 'change' : 'input', function () { it.nr[key] = inp.value; saveNew(); renderNewSoon(); });
           return el('label', {}, [lbl, inp]);
         };
-        cellName.appendChild(el('div', { cls: 'cm', text: 'Новое сырьё — допишется в справочник и на склад:' }));
+        cellName.appendChild(el('div', { cls: 'cm', text: other ? 'Есть на складе, но нет в справочниках — укажите свойства:' : 'Новое сырьё — допишется в справочник и на склад:' }));
         cellName.appendChild(el('div', { cls: 'newfields' }, [f('Группа', 'group', null, NG), f('СВ, %', 'ss', 'number'), f('Кисл., %', 'acid', 'number'), f('Плотн., кг/л', 'density', 'number')]));
       }
       return el('tr', { cls: isNew ? 'newref' : '' }, [cellName, el('td', { cls: 'v' }, [v]), el('td', { cls: 'u' }, [u]), el('td', { cls: 'n', text: tot }), el('td', {}, [del])]);
