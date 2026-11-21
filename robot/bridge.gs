@@ -3,7 +3,7 @@
  * Вставляется один раз, больше не меняется.
  * Умеет: прочитать лист таблицы, записать значения в диапазон, добавить строки,
  * передать сообщение в Telegram (из облака Яндекса Telegram недоступен).
- * Версия 2.
+ * Версия 3: ещё отдаёт любой файл папки (Excel, PDF) — для загрузки остатков из 1С.
  * Работает только с файлами из папки «claude рецепты нунчи» и только по секретному ключу.
  */
 var ROOT_FOLDER_ID = '1phFTtDIWs5LSYHuYxu1Y2ZG-_nHhZ8b3';
@@ -39,6 +39,14 @@ function doGet() { return out({ ok: true, service: 'nunchi-bridge' }); }
 function run(op) {
   if (op.action === 'list') return { files: listFiles() };
   if (op.action === 'telegram') return telegram(op);
+  if (op.action === 'listAll') return { files: listAll() };
+  if (op.action === 'blob') {
+    allowed(op.id);
+    var f = DriveApp.getFileById(op.id);
+    if (f.getSize() > 15 * 1024 * 1024) throw new Error('file too large');
+    var b = f.getBlob();
+    return { id: op.id, name: f.getName(), mime: b.getContentType(), modified: f.getLastUpdated().toISOString(), base64: Utilities.base64Encode(b.getBytes()) };
+  }
   allowed(op.id);
   var ss = SpreadsheetApp.openById(op.id);
   var sh = op.sheet ? ss.getSheetByName(op.sheet) : ss.getSheets()[0];
@@ -84,6 +92,22 @@ function telegram(op) {
     method: 'post', contentType: 'application/json', payload: JSON.stringify(op.payload || {}), muteHttpExceptions: true
   });
   return JSON.parse(r.getContentText());
+}
+
+/** Все файлы папки (любых типов), без корзины. */
+function listAll() {
+  var res = [];
+  (function walk(folder, path) {
+    var fs = folder.getFiles();
+    while (fs.hasNext()) {
+      var f = fs.next();
+      if (f.isTrashed()) continue;
+      res.push({ id: f.getId(), name: f.getName(), mime: f.getMimeType(), size: f.getSize(), path: path, modified: f.getLastUpdated().toISOString() });
+    }
+    var sub = folder.getFolders();
+    while (sub.hasNext()) { var s = sub.next(); if (!s.isTrashed()) walk(s, path + '/' + s.getName()); }
+  })(DriveApp.getFolderById(ROOT_FOLDER_ID), '');
+  return res;
 }
 
 function listFiles() {
