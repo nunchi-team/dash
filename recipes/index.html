@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -6,16 +6,477 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Nunchi — рецепты</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #fff; }
-  @media (prefers-color-scheme: dark) { html, body { background: #151413; } }
-  iframe { display: block; width: 100%; height: 100vh; height: 100dvh; border: 0; }
-  .fallback { position: fixed; right: 12px; bottom: 10px; font: 12px -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #6B6B6B; }
-  .fallback a { color: inherit; }
+/* Layout: sticky top bar + tabs; recipe grid → TTK sheet with batch input → stock check; plan of several batches */
+:root {
+  --bg: #FFFFFF; --surface: #FFFFFF; --ink: #141414; --muted: #6B6B6B; --line: #E4E2DE; --panel: #F4F3F1;
+  --accent: #141414; --accent-ink: #FFFFFF; --accent-soft: #F4F3F1; --amber: #C8892B;
+  --ok: #2E8B57; --ok-soft: #E4F2EA; --warn: #C98A1A; --warn-soft: #F8EEDC; --bad: #C0453B; --bad-soft: #F8E3E1;
+  --c-berry: #B5445E; --c-citrus: #C8892B; --c-fruit: #D0693F; --c-herb: #5B8A5F; --c-other: #9A968E;
+  --display: "Helvetica Neue", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --body: "Helvetica Neue", Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --r: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #151413; --surface: #151413; --ink: #F2F0EC; --muted: #A8A49C; --line: #33312D; --panel: #201F1D;
+    --accent: #F2F0EC; --accent-ink: #151413; --accent-soft: #201F1D; --amber: #E2A84A;
+    --ok: #5DBB83; --ok-soft: #1C2E23; --warn: #E2A84A; --warn-soft: #342A19; --bad: #E5675C; --bad-soft: #3A201D;
+    --c-berry: #E07A93; --c-citrus: #E2A84A; --c-fruit: #EE8A62; --c-herb: #8CC08F; --c-other: #8A867E; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+button, input, select { font: inherit; color: inherit; }
+.num, td.n, .kpi b { font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
+
+.top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 980px; margin: 0 auto; padding: 12px max(16px, env(safe-area-inset-left)); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand { display: flex; flex-direction: column; line-height: 1; }
+.mark { font-size: 30px; font-weight: 900; letter-spacing: -.04em; margin: 0; }
+.mark sup { font-size: 11px; font-weight: 700; vertical-align: top; margin-left: 1px; }
+.brand small { font-size: 12px; font-weight: 600; margin-top: 3px; }
+.tagline { color: var(--amber); font-weight: 600; font-size: 14px; text-align: right; line-height: 1.2; }
+.tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.tabs button { border: 0; background: none; padding: 7px 14px; border-radius: 999px; cursor: pointer; color: var(--muted); font-weight: 600; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.tabs .cnt { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+.tabs button[aria-selected="true"] .cnt { background: var(--accent-ink); }
+.meta { margin-left: auto; color: var(--muted); font-size: 12.5px; display: flex; gap: 10px; align-items: center; }
+.link { background: none; border: 0; color: var(--accent); cursor: pointer; font-weight: 600; padding: 0; }
+
+main { max-width: 980px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-left)) 64px; display: flex; flex-direction: column; gap: 24px; }
+h1, h2 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(22px, 3.2vw, 28px); line-height: 1.15; font-weight: 800; letter-spacing: -.02em; }
+h2 { font-size: 17px; }
+.sub { color: var(--muted); margin: 0; max-width: 70ch; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.chip[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.search { flex: 1 1 220px; max-width: 320px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.card { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 16px; cursor: pointer; display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; transition: transform .15s ease, box-shadow .15s ease; }
+.card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--cc, var(--c-other)); }
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.07); }
+.card:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card .t { font-weight: 700; font-size: 16px; line-height: 1.25; }
+.card .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid transparent; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.rd { background: var(--accent-soft); color: var(--accent); }
+.pill.mute { border-color: var(--line); color: var(--muted); }
+.balance { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.track { position: relative; flex: 1 1 60px; min-width: 60px; height: 6px; border-radius: 3px; background: var(--line); }
+.track .band { position: absolute; top: 0; bottom: 0; border-radius: 3px; opacity: .45; }
+.track .pin { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--ink); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.back { align-self: flex-start; }
+.head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.head .l { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.batch { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.water { display: flex; align-items: center; border: 2px solid var(--accent); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.water input { width: 120px; border: 0; padding: 10px 12px; font-size: 22px; font-weight: 700; background: none; }
+.water span { padding: 0 12px; color: var(--muted); font-weight: 600; }
+.qb { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 12px; cursor: pointer; font-weight: 600; }
+.qb:hover { border-color: var(--accent); }
+.btn { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: 11px 16px; font-weight: 700; cursor: pointer; }
+.btn.ghost { background: var(--accent-soft); color: var(--accent); }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { border: 0; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; background: var(--panel); }
+.kpi span { font-size: 12px; color: var(--muted); }
+.kpi b { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+.kpi small { color: var(--muted); font-size: 12px; }
+
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--panel); font-weight: 700; }
+td.n, th.n { text-align: right; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.grp td { background: var(--panel); color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding-top: 6px; padding-bottom: 6px; }
+tr.short td { background: color-mix(in srgb, var(--bad-soft) 55%, transparent); }
+tfoot td { font-weight: 700; background: var(--panel); }
+.banner { border-radius: 12px; padding: 12px 14px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
+.banner.ok { background: var(--ok-soft); color: var(--ok); }
+.banner.bad { background: var(--bad-soft); color: var(--bad); }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+
+.plan-row { display: grid; grid-template-columns: 28px minmax(0,1fr) auto auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+.plan-row .no { font-weight: 700; color: var(--muted); text-align: center; }
+.plan-row .nm { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.plan-row .nm small { display: block; font-weight: 500; color: var(--muted); }
+.plan-row .ctl { display: flex; gap: 6px; align-items: center; }
+.plan-row input { width: 86px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; text-align: right; background: var(--surface); }
+.ib { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; }
+.empty { border: 1px dashed var(--line); border-radius: var(--r); padding: 28px; text-align: center; color: var(--muted); }
+
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.login form { width: min(380px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.login .mark { font-size: 52px; }
+.login .mark sup { font-size: 18px; }
+.login .tg { color: var(--amber); font-size: 18px; font-weight: 600; margin: 0 0 14px; }
+.login input[type=password] { font-size: 18px; padding: 16px 18px; border: 1.5px solid var(--line); border-radius: 18px; background: var(--surface); outline: none; }
+.login input[type=password]:focus { border-color: var(--ink); }
+.login .btn { font-size: 18px; padding: 16px; border-radius: 18px; }
+.err { color: var(--bad); font-size: 13px; min-height: 18px; margin: 0; }
+.loading { color: var(--muted); padding: 40px 0; text-align: center; }
+@media (max-width: 640px) {
+  .tagline { display: none; }
+  .meta { margin-left: 0; width: 100%; }
+  .water input { width: 90px; font-size: 20px; }
+  .plan-row { grid-template-columns: 24px minmax(0,1fr); }
+  .plan-row .ctl, .plan-row > .pill { grid-column: 2; justify-self: start; }
+  td:first-child { white-space: normal; min-width: 150px; }
+  th, td { padding: 8px 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
 </style>
 </head>
 <body>
-<iframe src="https://script.google.com/macros/s/AKfycbyJbbOqH9h4s-0cOw6kdHNf_qcnLw-kwL8m5BSRZ7OVff_AFPb13g84qsnaDgnPCgko/exec"
-        title="Нунчи рецепты" allow="clipboard-write"></iframe>
-<div class="fallback">Не открывается? <a href="https://script.google.com/macros/s/AKfycbyJbbOqH9h4s-0cOw6kdHNf_qcnLw-kwL8m5BSRZ7OVff_AFPb13g84qsnaDgnPCgko/exec" target="_blank" rel="noopener">Открыть напрямую</a></div>
+
+<section class="login" id="login">
+  <form id="loginForm" autocomplete="on">
+    <div><p class="mark">Nunchi<sup>®</sup></p><p class="tg">Тонкое искусство рецептуры</p></div>
+    <label for="pwd" class="sub" style="font-size:14px">Пароль</label>
+    <input id="pwd" type="password" autocomplete="current-password" required>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)"><input type="checkbox" id="remember" checked style="width:auto"> Запомнить на этом устройстве</label>
+    <button class="btn" type="submit" id="loginBtn">Войти</button>
+    <p class="err" id="loginErr"></p>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <header class="top"><div class="top-in">
+    <div class="brand"><span class="mark">Nunchi<sup>®</sup></span><small>the subtle art of drinks</small></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-recipes" aria-selected="true">Рецепты</button>
+      <button role="tab" id="tab-plan" aria-selected="false">План варок<span class="cnt" id="planCnt">0</span></button>
+    </nav>
+    <div class="meta"><span class="tagline">Тонкое искусство<br>рецептуры</span><span id="stamp"></span><button class="link" id="refresh">Обновить</button><button class="link" id="logout">Выйти</button></div>
+  </div></header>
+
+  <main>
+    <section id="view-list">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1>Рецепты по категориям</h1>
+        <p class="sub" id="listSub"></p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:18px 0">
+        <div class="chips" id="cats"></div>
+        <input class="search" id="q" type="search" placeholder="Поиск по названию или ингредиенту">
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section id="view-ttk" hidden style="display:flex;flex-direction:column;gap:16px">
+      <button class="link back" id="back">← Все рецепты</button>
+      <div class="panel">
+        <div class="head">
+          <div class="l">
+            <div style="display:flex;gap:8px;flex-wrap:wrap" id="ttkTags"></div>
+            <h1 id="ttkName"></h1>
+            <p class="sub" id="ttkDesc"></p>
+          </div>
+          <div class="batch">
+            <div class="field"><label for="water">Вода на партию</label>
+              <div class="water"><input id="water" type="number" min="0" step="10" inputmode="decimal" value="500"><span>л</span></div></div>
+            <button class="qb" data-w="100">100</button><button class="qb" data-w="300">300</button><button class="qb" data-w="500">500</button><button class="qb" data-w="1000">1000</button>
+            <button class="btn ghost" id="addPlan">+ В план варок</button>
+          </div>
+        </div>
+        <div class="kpis" id="kpis"></div>
+        <div id="ttkBalance" style="max-width:560px"></div>
+      </div>
+
+      <div class="panel">
+        <h2>ТТК на партию</h2>
+        <div class="tw"><table>
+          <thead><tr><th>Ингредиент</th><th class="n">г на 1 л воды</th><th class="n">На партию</th><th class="n">Цена, ₽/кг</th><th class="n">Сумма, ₽</th></tr></thead>
+          <tbody id="ttkBody"></tbody><tfoot id="ttkFoot"></tfoot>
+        </table></div>
+        <p class="note">Вода — база рецепта: всё указано на 1 л воды. Выход учитывает 2% технологических потерь.</p>
+      </div>
+
+      <div class="panel">
+        <div class="head"><h2>Склад под эту варку</h2><span class="note" id="stockDate"></span></div>
+        <div id="stockBanner"></div>
+        <div class="tw"><table>
+          <thead><tr><th>Сырьё</th><th class="n">Нужно</th><th class="n">На складе</th><th class="n">Остаток после</th><th>Статус</th><th class="n">Заказать</th></tr></thead>
+          <tbody id="stockBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <section id="view-plan" hidden style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1>План варок</h1>
+        <p class="sub">Несколько варок сразу. Порядок — это очередь: сырьё сначала достаётся верхней варке. Стрелками можно поменять приоритет.</p>
+      </div>
+      <div id="planList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="kpis" id="planKpis"></div>
+      <div class="panel">
+        <h2>Что заказать под весь план</h2>
+        <div class="tw"><table>
+          <thead><tr><th>Сырьё</th><th class="n">Нужно всего</th><th class="n">На складе</th><th class="n">Заказать</th><th class="n">Сумма, ₽</th><th>Не хватает варкам</th></tr></thead>
+          <tbody id="orderBody"></tbody><tfoot id="orderFoot"></tfoot>
+        </table></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  var CATS = [
+    { k: 'Ягодные', c: 'var(--c-berry)', lo: 20, hi: 25 },
+    { k: 'Цитрусовые', c: 'var(--c-citrus)', lo: 25, hi: 28 },
+    { k: 'Фруктовые', c: 'var(--c-fruit)', lo: 28, hi: 33 },
+    { k: 'Травяные и цветочные', c: 'var(--c-herb)', lo: 33, hi: 40 },
+    { k: 'Другое', c: 'var(--c-other)', lo: null, hi: null }
+  ];
+  var LOSS = 0.02, BOTTLE = 0.75;
+  var S = { pwd: '', data: null, cat: '', q: '', cur: null, plan: [] };
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  function el(tag, attrs, kids) {
+    var e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (a) {
+      if (a === 'text') e.textContent = attrs[a];
+      else if (a === 'cls') e.className = attrs[a];
+      else if (a === 'style') e.setAttribute('style', attrs[a]);
+      else if (a.indexOf('on') === 0) e.addEventListener(a.slice(2), attrs[a]);
+      else e.setAttribute(a, attrs[a]);
+    });
+    (kids || []).forEach(function (k) { if (k != null) e.appendChild(typeof k === 'string' ? document.createTextNode(k) : k); });
+    return e;
+  }
+  function fmt(v, d) { return (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('ru-RU', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function gfmt(v) { var d = v >= 100 ? 1 : v >= 1 ? 2 : 3; return fmt(v, d); }
+  function mass(g) { return Math.abs(g) >= 1000 ? fmt(g / 1000, g >= 100000 ? 1 : 2) + ' кг' : gfmt(g) + ' г'; }
+  function catOf(k) { return CATS.filter(function (c) { return c.k === k; })[0] || CATS[4]; }
+  function key(r, v) { return r + '||' + v; }
+
+  /* ---------- данные ---------- */
+  var API = 'https://script.google.com/macros/s/AKfycbyJbbOqH9h4s-0cOw6kdHNf_qcnLw-kwL8m5BSRZ7OVff_AFPb13g84qsnaDgnPCgko/exec';
+  function call(fn, arg, ok, fail) {
+    if (window.google && google.script && google.script.run) google.script.run.withSuccessHandler(ok).withFailureHandler(fail)[fn](arg);
+    else if (!window.MOCK) fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ pwd: arg }) })
+      .then(function (r) { if (!r.ok) throw new Error('Сервер ответил ' + r.status); return r.json(); })
+      .then(ok).catch(function (e) { fail(new Error('Нет связи с таблицей. Проверьте интернет и попробуйте ещё раз.')); });
+    else if (window.MOCK) setTimeout(function () { ok(window.MOCK[fn](arg)); }, 50);
+    else fail(new Error('Нет связи с таблицей'));
+  }
+  function login(pwd, remember) {
+    $('loginBtn').disabled = true; $('loginErr').textContent = '';
+    call('getData', pwd, function (res) {
+      $('loginBtn').disabled = false;
+      if (!res || !res.ok) { $('loginErr').textContent = (res && res.error) || 'Неверный пароль'; store.del('nunchi_recipes_pw'); $('login').hidden = false; $('app').hidden = true; return; }
+      S.pwd = pwd; if (remember) store.set('nunchi_recipes_pw', pwd);
+      setData(res); $('login').hidden = true; $('app').hidden = false;
+    }, function (e) { $('loginBtn').disabled = false; $('login').hidden = false; $('app').hidden = true; $('loginErr').textContent = e.message || String(e); });
+  }
+  function setData(d) {
+    var raw = {}; d.raw.forEach(function (r) { raw[r.name] = r; });
+    var lines = {}; d.lines.forEach(function (l) { (lines[key(l.recipe, l.version)] = lines[key(l.recipe, l.version)] || []).push(l); });
+    d.rawMap = raw; d.lineMap = lines;
+    d.cards = d.cards.filter(function (c) { return lines[key(c.recipe, c.version)]; });
+    S.data = d;
+    $('stamp').textContent = 'Данные: ' + d.updated;
+    S.plan = store.get('nunchi_plan', []).filter(function (p) { return lines[key(p.recipe, p.version)]; });
+    renderList(); renderPlan();
+    if (S.cur && lines[key(S.cur.recipe, S.cur.version)]) renderTTK();
+  }
+
+  /* ---------- расчёт ---------- */
+  function need(card, water) { // граммы на партию по ингредиентам
+    return S.data.lineMap[key(card.recipe, card.version)].map(function (l) {
+      var m = S.data.rawMap[l.ingredient] || { price: 0, stock: 0, cat: '' };
+      return { name: l.ingredient, perL: l.g, g: l.g * water, price: m.price, stockG: m.stock * 1000, cat: m.cat, note: l.note };
+    });
+  }
+  function out(card, water) { var l = water * card.yieldPerL * (1 - LOSS); return { l: l, bottles: Math.floor(l / BOTTLE + 1e-9) }; }
+
+  /* ---------- список ---------- */
+  function renderList() {
+    var d = S.data;
+    var counts = {}; d.cards.forEach(function (c) { counts[c.category] = (counts[c.category] || 0) + 1; });
+    $('listSub').textContent = d.cards.length + ' версий рецептов. Нажмите на карточку, чтобы открыть ТТК, ввести воду и сразу увидеть склад.';
+    var chips = [el('button', { cls: 'chip', 'aria-pressed': String(!S.cat), onclick: function () { S.cat = ''; renderList(); } }, ['Все · ' + d.cards.length])];
+    CATS.forEach(function (c) {
+      if (!counts[c.k]) return;
+      chips.push(el('button', { cls: 'chip', 'aria-pressed': String(S.cat === c.k), onclick: function () { S.cat = S.cat === c.k ? '' : c.k; renderList(); } },
+        [el('span', { cls: 'dot', style: 'background:' + c.c }), c.k + ' · ' + counts[c.k]]));
+    });
+    $('cats').replaceChildren.apply($('cats'), chips);
+    var q = S.q.toLowerCase();
+    var list = d.cards.filter(function (c) {
+      if (S.cat && c.category !== S.cat) return false;
+      if (!q) return true;
+      if ((c.recipe + ' ' + c.version).toLowerCase().indexOf(q) >= 0) return true;
+      return d.lineMap[key(c.recipe, c.version)].some(function (l) { return l.ingredient.toLowerCase().indexOf(q) >= 0; });
+    });
+    var grid = $('grid');
+    if (!list.length) { grid.replaceChildren(el('div', { cls: 'empty', text: 'Ничего не нашлось. Попробуйте другую категорию или слово.' })); return; }
+    grid.replaceChildren.apply(grid, list.map(function (c) {
+      var cat = catOf(c.category);
+      return el('button', { cls: 'card', style: '--cc:' + cat.c, onclick: function () { openTTK(c); } }, [
+        el('div', { cls: 'row' }, [el('span', { style: 'display:inline-flex;gap:6px;align-items:center' }, [el('span', { cls: 'dot', style: 'background:' + cat.c }), c.category]), statusPill(c.status)]),
+        el('div', { cls: 't', text: c.recipe }),
+        el('div', { cls: 'row' }, [el('span', { text: c.version }), el('span', { cls: 'num', text: fmt(c.brix, 1) + ' Brix · 1:' + fmt(c.waterMl / c.cordialMl, 0) })]),
+        balanceBar(c, true)
+      ]);
+    }));
+  }
+  function statusPill(s) { return el('span', { cls: 'pill ' + (s === 'Актив' ? 'ok' : s === 'R&D' ? 'rd' : 'mute'), text: s || '—' }); }
+  function balanceState(c) { var cat = catOf(c.category); if (cat.lo == null || !c.index) return null; return c.index < cat.lo ? 'Кисло' : c.index > cat.hi ? 'Сладко' : 'В балансе'; }
+  function balanceBar(c, compact) {
+    var cat = catOf(c.category), lo = 10, hi = 50, pct = function (v) { return Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100)); };
+    var tr = el('div', { cls: 'track' });
+    if (cat.lo != null) tr.appendChild(el('div', { cls: 'band', style: 'left:' + pct(cat.lo) + '%;width:' + (pct(cat.hi) - pct(cat.lo)) + '%;background:' + cat.c }));
+    if (c.index) tr.appendChild(el('div', { cls: 'pin', style: 'left:' + pct(c.index) + '%;background:' + cat.c }));
+    var st = balanceState(c);
+    return el('div', { cls: 'balance' }, [el('span', { text: compact ? 'кисло' : 'Кисло' }), tr, el('span', { text: compact ? 'сладко' : 'Сладко' }),
+      st ? el('span', { cls: 'pill ' + (st === 'В балансе' ? 'ok' : 'warn'), text: st + ' · ' + fmt(c.index, 1) }) : null]);
+  }
+
+  /* ---------- ТТК ---------- */
+  function openTTK(c) { S.cur = c; var w = store.get('nunchi_w_' + key(c.recipe, c.version), 500); $('water').value = w; show('ttk'); renderTTK(); window.scrollTo(0, 0); }
+  function renderTTK() {
+    var c = S.cur, cat = catOf(c.category);
+    var water = Math.max(0, parseFloat(String($('water').value).replace(',', '.')) || 0);
+    store.set('nunchi_w_' + key(c.recipe, c.version), water);
+    $('ttkTags').replaceChildren(el('span', { cls: 'pill mute' }, [el('span', { cls: 'dot', style: 'background:' + cat.c }), c.category]), el('span', { cls: 'pill mute', text: c.version }), statusPill(c.status));
+    $('ttkName').textContent = c.recipe;
+    $('ttkDesc').textContent = c.description || ('Кордиал ' + fmt(c.brix, 1) + ' Brix, разведение ' + fmt(c.cordialMl, 0) + ' мл на ' + fmt(c.waterMl, 0) + ' мл воды.');
+    var o = out(c, water), rows = need(c, water);
+    var cost = rows.reduce(function (s, r) { return s + r.g / 1000 * (r.price || 0); }, 0);
+    var unpriced = rows.filter(function (r) { return !r.price; }).length;
+    var portions = o.l * 1000 / c.cordialMl;
+    $('kpis').replaceChildren(
+      kpi('Выход кордиала', fmt(o.l, 0) + ' л', fmt(c.yieldPerL, 3) + ' л с 1 л воды'),
+      kpi('Бутылок 0,75', fmt(o.bottles, 0), fmt(portions, 0) + ' порций по ' + fmt(c.cordialMl, 0) + ' мл'),
+      kpi('Brix кордиала', fmt(c.brix, 1), 'план ' + fmt(c.brixPlan, 0)),
+      kpi('В стакане', fmt(c.glassBrix, 1) + ' Bx', 'кислотность ' + fmt(c.glassAcid, 2) + ' г/л'),
+      kpi('Сырьё на партию', fmt(cost, 0) + ' ₽', unpriced ? 'без цены: ' + unpriced + ' поз.' : 'все цены заполнены')
+    );
+    $('ttkBalance').replaceChildren(balanceBar(c, false));
+    var groups = {}; rows.forEach(function (r) { (groups[r.cat || 'Прочее'] = groups[r.cat || 'Прочее'] || []).push(r); });
+    var order = ['Сахар', 'Сок', 'Кислота', 'Соль', 'Гидроколлоид', 'Ароматизатор', 'Экстракт', 'Сухоцвет', 'Консервант', 'Прочее'];
+    var keys = Object.keys(groups).sort(function (a, b) { return (order.indexOf(a) + 99) % 99 - (order.indexOf(b) + 99) % 99; });
+    var body = [];
+    keys.forEach(function (k) {
+      body.push(el('tr', { cls: 'grp' }, [el('td', { colspan: '5', text: k })]));
+      groups[k].forEach(function (r) {
+        body.push(el('tr', null, [el('td', { text: r.name }), el('td', { cls: 'n', text: gfmt(r.perL) }), el('td', { cls: 'n', text: mass(r.g) }),
+          el('td', { cls: 'n', text: r.price ? fmt(r.price, 0) : '—' }), el('td', { cls: 'n', text: r.price ? fmt(r.g / 1000 * r.price, 0) : '—' })]));
+      });
+    });
+    $('ttkBody').replaceChildren.apply($('ttkBody'), body);
+    var totalG = rows.reduce(function (s, r) { return s + r.g; }, 0);
+    $('ttkFoot').replaceChildren(el('tr', null, [el('td', { text: 'Итого без воды · + вода ' + fmt(water, 0) + ' л' }), el('td', { cls: 'n', text: gfmt(totalG / (water || 1)) }), el('td', { cls: 'n', text: mass(totalG) }), el('td'), el('td', { cls: 'n', text: fmt(cost, 0) })]));
+
+    var short = 0, orderSum = 0;
+    var srows = rows.slice().sort(function (a, b) { return (a.stockG - a.g) - (b.stockG - b.g); }).map(function (r) {
+      var left = r.stockG - r.g, isShort = left < -1e-6; if (isShort) { short++; orderSum += -left / 1000 * (r.price || 0); }
+      return el('tr', { cls: isShort ? 'short' : '' }, [el('td', { text: r.name }), el('td', { cls: 'n', text: mass(r.g) }), el('td', { cls: 'n', text: mass(r.stockG) }),
+        el('td', { cls: 'n', text: mass(left) }), el('td', null, [el('span', { cls: 'pill ' + (isShort ? 'bad' : left < r.g * 0.2 ? 'warn' : 'ok'), text: isShort ? 'Не хватает' : left < r.g * 0.2 ? 'Впритык' : 'Хватает' })]),
+        el('td', { cls: 'n', text: isShort ? mass(-left) : '—' })]);
+    });
+    $('stockBody').replaceChildren.apply($('stockBody'), srows);
+    $('stockBanner').replaceChildren(short
+      ? el('div', { cls: 'banner bad', text: 'Не хватает ' + short + ' поз. Нужно заказать' + (orderSum ? ' примерно на ' + fmt(orderSum, 0) + ' ₽' : '') + '.' })
+      : el('div', { cls: 'banner ok', text: 'Сырья на эту варку хватает.' }));
+    $('stockDate').textContent = S.data.stockDate ? 'Остатки на ' + S.data.stockDate : 'Остатки: дата выгрузки не указана';
+  }
+  function kpi(l, v, s) { return el('div', { cls: 'kpi' }, [el('span', { text: l }), el('b', { text: v }), el('small', { text: s })]); }
+
+  /* ---------- план ---------- */
+  function savePlan() { store.set('nunchi_plan', S.plan); $('planCnt').textContent = S.plan.length; }
+  function renderPlan() {
+    savePlan();
+    var list = $('planList');
+    if (!S.plan.length) {
+      list.replaceChildren(el('div', { cls: 'empty', text: 'План пуст. Откройте рецепт, введите воду и нажмите «+ В план варок».' }));
+      $('planKpis').replaceChildren(); $('orderBody').replaceChildren(); $('orderFoot').replaceChildren(); return;
+    }
+    var cardOf = function (p) { return S.data.cards.filter(function (c) { return c.recipe === p.recipe && c.version === p.version; })[0]; };
+    // распределение сырья по очереди
+    var left = {}; S.data.raw.forEach(function (r) { left[r.name] = r.stock * 1000; });
+    var total = {}, shortBy = {}, batchShort = [];
+    S.plan.forEach(function (p, i) {
+      var c = cardOf(p), n = 0;
+      need(c, p.water).forEach(function (r) {
+        total[r.name] = (total[r.name] || 0) + r.g;
+        var have = left[r.name] || 0;
+        if (have + 1e-6 < r.g) { n++; (shortBy[r.name] = shortBy[r.name] || []).push(i + 1); }
+        left[r.name] = have - r.g;
+      });
+      batchShort.push(n);
+    });
+    list.replaceChildren.apply(list, S.plan.map(function (p, i) {
+      var c = cardOf(p), o = out(c, p.water), cat = catOf(c.category);
+      var inp = el('input', { type: 'number', min: '0', step: '10', value: String(p.water), 'aria-label': 'Вода, л', onchange: function (e) { p.water = Math.max(0, parseFloat(e.target.value) || 0); renderPlan(); } });
+      return el('div', { cls: 'plan-row' }, [
+        el('div', { cls: 'no', text: String(i + 1) }),
+        el('div', { cls: 'nm' }, [el('span', { cls: 'dot', style: 'background:' + cat.c + ';margin-right:8px' }), c.recipe, el('small', { text: c.version + ' · выход ' + fmt(o.l, 0) + ' л · ' + fmt(o.bottles, 0) + ' бут.' })]),
+        el('span', { cls: 'pill ' + (batchShort[i] ? 'bad' : 'ok'), text: batchShort[i] ? 'Не хватает ' + batchShort[i] + ' поз.' : 'Сырья хватает' }),
+        el('div', { cls: 'ctl' }, [inp, el('span', { cls: 'note', text: 'л' }),
+          el('button', { cls: 'ib', title: 'Выше', 'aria-label': 'Выше', onclick: function () { if (i) { S.plan.splice(i - 1, 0, S.plan.splice(i, 1)[0]); renderPlan(); } } }, ['↑']),
+          el('button', { cls: 'ib', title: 'Ниже', 'aria-label': 'Ниже', onclick: function () { if (i < S.plan.length - 1) { S.plan.splice(i + 1, 0, S.plan.splice(i, 1)[0]); renderPlan(); } } }, ['↓']),
+          el('button', { cls: 'ib', title: 'Убрать', 'aria-label': 'Убрать', onclick: function () { S.plan.splice(i, 1); renderPlan(); } }, ['×'])])
+      ]);
+    }));
+    var litres = 0, bottles = 0; S.plan.forEach(function (p) { var o = out(cardOf(p), p.water); litres += o.l; bottles += o.bottles; });
+    var names = Object.keys(total), toOrder = 0, sum = 0;
+    var rows = names.map(function (nm) {
+      var m = S.data.rawMap[nm] || { stock: 0, price: 0 }, have = m.stock * 1000, ord = Math.max(0, total[nm] - have);
+      if (ord > 1e-6) { toOrder++; sum += ord / 1000 * (m.price || 0); }
+      return { nm: nm, need: total[nm], have: have, ord: ord, price: m.price, who: shortBy[nm] || [] };
+    }).sort(function (a, b) { return b.ord - a.ord || a.nm.localeCompare(b.nm); });
+    $('planKpis').replaceChildren(kpi('Варок в плане', String(S.plan.length), 'по очереди сверху вниз'), kpi('Выход кордиала', fmt(litres, 0) + ' л', fmt(bottles, 0) + ' бутылок 0,75'),
+      kpi('Позиций к заказу', String(toOrder), toOrder ? 'из ' + names.length + ' нужных' : 'всё есть на складе'), kpi('Сумма заказа', sum ? fmt(sum, 0) + ' ₽' : '—', 'по заполненным ценам'));
+    $('orderBody').replaceChildren.apply($('orderBody'), rows.map(function (r) {
+      return el('tr', { cls: r.ord > 1e-6 ? 'short' : '' }, [el('td', { text: r.nm }), el('td', { cls: 'n', text: mass(r.need) }), el('td', { cls: 'n', text: mass(r.have) }),
+        el('td', { cls: 'n', text: r.ord > 1e-6 ? mass(r.ord) : '—' }), el('td', { cls: 'n', text: r.ord > 1e-6 && r.price ? fmt(r.ord / 1000 * r.price, 0) : '—' }),
+        el('td', { text: r.who.length ? 'варка ' + r.who.join(', ') : '' })]);
+    }));
+    $('orderFoot').replaceChildren(el('tr', null, [el('td', { text: 'Итого к заказу' }), el('td'), el('td'), el('td', { cls: 'n', text: toOrder + ' поз.' }), el('td', { cls: 'n', text: sum ? fmt(sum, 0) : '—' }), el('td')]));
+  }
+
+  /* ---------- навигация ---------- */
+  function show(v) {
+    $('view-list').hidden = v !== 'list'; $('view-ttk').hidden = v !== 'ttk'; $('view-plan').hidden = v !== 'plan';
+    $('tab-recipes').setAttribute('aria-selected', String(v !== 'plan')); $('tab-plan').setAttribute('aria-selected', String(v === 'plan'));
+  }
+  $('tab-recipes').onclick = function () { show(S.cur && !$('view-ttk').hidden ? 'ttk' : 'list'); if (!$('view-list').hidden) renderList(); };
+  $('tab-plan').onclick = function () { renderPlan(); show('plan'); };
+  $('back').onclick = function () { S.cur = null; show('list'); renderList(); };
+  $('water').addEventListener('input', function () { renderTTK(); });
+  Array.prototype.forEach.call(document.querySelectorAll('.qb'), function (b) { b.onclick = function () { $('water').value = b.getAttribute('data-w'); renderTTK(); }; });
+  $('addPlan').onclick = function () {
+    var w = parseFloat($('water').value) || 0; if (!w) return;
+    S.plan.push({ recipe: S.cur.recipe, version: S.cur.version, water: w }); savePlan();
+    $('addPlan').textContent = '✓ Добавлено в план'; setTimeout(function () { $('addPlan').textContent = '+ В план варок'; }, 1500);
+  };
+  $('q').addEventListener('input', function (e) { S.q = e.target.value; renderList(); });
+  $('refresh').onclick = function () { $('stamp').textContent = 'Обновляю…'; call('getData', S.pwd, function (r) { if (r && r.ok) setData(r); }, function (e) { $('stamp').textContent = 'Ошибка: ' + (e.message || e); }); };
+  $('logout').onclick = function () { store.del('nunchi_recipes_pw'); S.pwd = ''; $('app').hidden = true; $('login').hidden = false; $('pwd').value = ''; };
+  $('loginForm').addEventListener('submit', function (e) { e.preventDefault(); login($('pwd').value, $('remember').checked); });
+
+  var saved = store.get('nunchi_recipes_pw', '');
+  if (saved) { $('login').hidden = true; login(saved, true); }
+})();
+</script>
 </body>
 </html>
