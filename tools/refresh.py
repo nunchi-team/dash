@@ -24,7 +24,8 @@ except Exception as e:
 robot_url = json.load(open(ep_path)).get("url", "") if os.path.exists(ep_path) else ""
 core = {k: v for k, v in data.items() if k not in ("updated", "live")}
 core["lines"] = [{k: v for k, v in l.items() if k != "modified"} for l in data["lines"]]
-h = hashlib.sha256((json.dumps(core, sort_keys=True, ensure_ascii=False) + robot_url).encode()).hexdigest()
+tpl = open(os.path.join(ROOT, "tools", "recipes_template.html"), encoding="utf-8").read()
+h = hashlib.sha256((json.dumps(core, sort_keys=True, ensure_ascii=False) + robot_url + tpl).encode()).hexdigest()
 old = open(hash_path).read().strip() if os.path.exists(hash_path) else ""
 counts = {l["key"]: len(l["recipes"]) for l in data["lines"]}
 if h == old:

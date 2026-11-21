@@ -298,23 +298,33 @@ dialog.pub::backdrop { background: rgba(0,0,0,.45); }
     box.textContent = errs.length ? '⚠️ ' + errs.join(' · ') + ' — проверьте формат таблицы.' : '';
   }
   var PW = '';
-  async function login(pw, remember, silent) {
-    $('loginBtn').disabled = true; $('err').textContent = silent ? '' : 'Проверяю…';
-    D = null;
-    var live = await fetchLive(pw);
-    if (live && live.data) D = live.data;
-    if (!D) { try { D = await decrypt(pw); D.live = false; } catch (e) { D = null; } }
-    if (!D) { $('loginBtn').disabled = false; $('err').textContent = silent ? '' : 'Неверный пароль'; store.del('nunchi_ttk_pw'); return; }
-    PW = pw;
-    if (remember) store.set('nunchi_ttk_pw', pw);
-    $('login').hidden = true; $('app').hidden = false;
+  function enter(data) {
+    D = data;
     if (!D.lines) D.lines = [{ key: 'tonics', title: 'Тоники', recipes: D.tonics, ref: D.ref }];
     D.tonics = [];
-    D.lines.forEach(function (l) { l.recipes.forEach(function (r) { r._ref = l.ref; r._line = l.key; D.tonics.push(r); }); });
-    $('stamp').textContent = D.live ? 'Из таблиц · ' + D.updated.slice(-5) : 'Копия от ' + D.updated;
-    $('stamp').title = D.live ? 'Данные загружены из Google Таблиц только что' : 'Робот недоступен — показана сохранённая копия';
+    D.lines.forEach(function (l) { (l.recipes || []).forEach(function (r) { r._ref = l.ref; r._line = l.key; D.tonics.push(r); }); });
+    $('login').hidden = true; $('app').hidden = false;
+    $('stamp').textContent = D.live ? 'Из таблиц · ' + String(D.updated || '').slice(-5) : 'Копия от ' + D.updated;
+    $('stamp').title = D.live ? 'Данные загружены из Google Таблиц' : 'Сохранённая копия; живые данные подгружаются';
     showErrors();
     route();
+  }
+  async function login(pw, remember, silent) {
+    $('loginBtn').disabled = true; $('err').textContent = silent ? '' : 'Проверяю…';
+    var copy = null;
+    try { copy = await decrypt(pw); copy.live = false; } catch (e) { copy = null; }
+    if (copy) {
+      PW = pw; if (remember) store.set('nunchi_ttk_pw', pw);
+      enter(copy);                                   // сайт открывается сразу на сохранённой копии
+      fetchLive(pw).then(function (l) {              // и следом подтягивает живые данные из таблиц
+        if (l && l.data) { try { enter(l.data); } catch (e) { console.warn(e); enter(copy); } }
+      });
+      return;
+    }
+    if (!silent) $('err').textContent = 'Загружаю из таблиц…';
+    var live = await fetchLive(pw);                  // копия старше пароля — пробуем робота
+    if (live && live.data) { PW = pw; if (remember) store.set('nunchi_ttk_pw', pw); enter(live.data); return; }
+    $('loginBtn').disabled = false; $('err').textContent = silent ? '' : 'Неверный пароль'; store.del('nunchi_ttk_pw');
   }
   $('loginForm').addEventListener('submit', function (e) { e.preventDefault(); login($('pwd').value, $('remember').checked); });
   $('logout').onclick = function () { store.del('nunchi_ttk_pw'); location.hash = ''; location.reload(); };
