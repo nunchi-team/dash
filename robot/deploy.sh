@@ -63,6 +63,7 @@ for u in d.get("result", []):
 if chat:
     json.dump(chat, open("robot/fn/tg_chat.json", "w"), ensure_ascii=False)
     print("группа найдена:", chat["title"])
+    open("/tmp/tg_new", "w").write("1")
 else:
     print("группа не найдена: бот не видел сообщений в группе", d.get("description", ""))
 ' >>"$LOG" 2>&1
@@ -78,6 +79,11 @@ ID=$(yc serverless function get --name "$NAME" --format json | python3 -c 'impor
 URL="https://functions.yandexcloud.net/$ID"
 printf '{"url": "%s"}\n' "$URL" > robot/endpoint.json
 
+if [ -f /tmp/tg_new ]; then
+  CID=$(python3 -c 'import json;print(json.load(open("robot/fn/tg_chat.json"))["chat_id"])')
+  curl -s -m 20 -X POST "https://api.telegram.org/bot$TG_BOT_TOKEN/sendMessage" -H 'Content-Type: application/json' \
+    -d "{\"chat_id\": $CID, \"text\": \"👋 Бот Нунчи подключён. Сюда будут приходить варки с сайта рецептов.\"}" | python3 -c 'import json,sys;d=json.load(sys.stdin);print("приветствие:", "ok" if d.get("ok") else d.get("description"))' >>"$LOG" 2>&1
+fi
 HEALTH=$(curl -s -m 60 -X POST "$URL" -H 'Content-Type: application/json' -d '{"action":"health"}')
 echo "health: $HEALTH" >>"$LOG"
 if echo "$HEALTH" | grep -q '"ok": true'; then
