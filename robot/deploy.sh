@@ -61,12 +61,19 @@ print("обновлений у бота:", len(res), "типы:", sorted({k for 
 chat = None
 for u in res:
     for k in ("message", "channel_post", "my_chat_member", "chat_member", "edited_message"):
-        c = (u.get(k) or {}).get("chat") or {}
+        m = u.get(k) or {}
+        c = m.get("chat") or {}
         if c.get("type") in ("group", "supergroup", "channel"):
-            chat = {"chat_id": c["id"], "title": c.get("title", ""), "type": c["type"]}
+            found = {"chat_id": c["id"], "title": c.get("title", ""), "type": c["type"]}
+            if m.get("is_topic_message") and m.get("message_thread_id"):
+                found["thread_id"] = m["message_thread_id"]
+                topic = (m.get("reply_to_message") or {}).get("forum_topic_created") or {}
+                found["topic"] = topic.get("name", "")
+            if found.get("thread_id") or not (chat or {}).get("thread_id"):
+                chat = found
 if chat:
     json.dump(chat, open("robot/fn/tg_chat.json", "w"), ensure_ascii=False)
-    print("группа найдена:", chat["title"], chat["type"])
+    print("группа найдена:", chat["title"], chat["type"], "тема:", chat.get("topic") or chat.get("thread_id") or "общий чат")
     open("/tmp/tg_new", "w").write("1")
 else:
     print("группа не найдена: бот не видел сообщений в группе")
@@ -85,8 +92,9 @@ printf '{"url": "%s"}\n' "$URL" > robot/endpoint.json
 
 if [ -f /tmp/tg_new ]; then
   CID=$(python3 -c 'import json;print(json.load(open("robot/fn/tg_chat.json"))["chat_id"])')
+  TID=$(python3 -c 'import json;print(json.load(open("robot/fn/tg_chat.json")).get("thread_id") or "null")')
   curl -s -m 20 -X POST "https://api.telegram.org/bot$TG_BOT_TOKEN/sendMessage" -H 'Content-Type: application/json' \
-    -d "{\"chat_id\": $CID, \"text\": \"👋 Бот Нунчи подключён. Сюда будут приходить варки с сайта рецептов.\"}" | python3 -c 'import json,sys;d=json.load(sys.stdin);print("приветствие:", "ok" if d.get("ok") else d.get("description"))' >>"$LOG" 2>&1
+    -d "{\"chat_id\": $CID, \"message_thread_id\": $TID, \"text\": \"👋 Бот Нунчи подключён. Сюда будут приходить варки с сайта рецептов.\"}" | python3 -c 'import json,sys;d=json.load(sys.stdin);print("приветствие:", "ok" if d.get("ok") else d.get("description"))' >>"$LOG" 2>&1
 fi
 HEALTH=$(curl -s -m 60 -X POST "$URL" -H 'Content-Type: application/json' -d '{"action":"health"}')
 echo "health: $HEALTH" >>"$LOG"

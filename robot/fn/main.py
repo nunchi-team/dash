@@ -59,6 +59,15 @@ def get_data(fresh=False):
     return _cache["data"]
 
 
+def tg_thread():
+    tid = os.environ.get("TG_THREAD_ID", "").strip()
+    if not tid:
+        p = os.path.join(os.path.dirname(__file__), "tg_chat.json")
+        if os.path.exists(p):
+            tid = str(json.load(open(p)).get("thread_id") or "")
+    return int(tid) if tid.isdigit() else None
+
+
 def tg_chat():
     cid = os.environ.get("TG_CHAT_ID", "").strip()
     if not cid:
@@ -74,7 +83,10 @@ def bot_ready():
 
 def tg_send(text):
     url = "https://api.telegram.org/bot%s/sendMessage" % os.environ["TG_BOT_TOKEN"]
-    body = json.dumps({"chat_id": tg_chat(), "text": text, "parse_mode": "HTML", "disable_web_page_preview": True}).encode()
+    msg = {"chat_id": tg_chat(), "text": text, "parse_mode": "HTML", "disable_web_page_preview": True}
+    if tg_thread():
+        msg["message_thread_id"] = tg_thread()
+    body = json.dumps(msg).encode()
     req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
