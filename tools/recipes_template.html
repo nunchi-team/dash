@@ -269,7 +269,8 @@ td.order { color: var(--bad); font-weight: 800; }
 
   /* ---------- расчёт ---------- */
   function slug(s) { return s.toLowerCase().replace(/[^a-zа-яё0-9]+/g, '-').replace(/^-|-$/g, ''); }
-  function settings(t) { var s = store.get('nunchi_ttk_' + slug(t.name), null) || {};
+  function base(t) { return [t.water, t.sweetener, t.brixTarget, t.syrupBrix].join('|'); }
+  function settings(t) { var s = store.get('nunchi_ttk_' + slug(t.name), null) || {}; if (s.base !== base(t)) s = {};
     return { water: s.water != null ? s.water : t.water, sweetener: s.sweetener || t.sweetener, brix: s.brix != null ? s.brix : t.brixTarget, syrupBrix: s.syrupBrix != null ? s.syrupBrix : t.syrupBrix }; }
   function calc(t, s) {
     var ref = t._ref || D.ref, Q = 0, R = 0, A = 0, QN = 0, rows = [];
@@ -421,7 +422,7 @@ td.order { color: var(--bad); font-weight: 800; }
   /* ---------- ТТК ---------- */
   function fill() { var s = settings(cur); $('w').value = s.water; $('bt').value = s.brix; $('sb').value = s.syrupBrix; }
   function read() { var s = settings(cur); return { water: Math.max(0, +$('w').value || 0), sweetener: s.sweetener, brix: +$('bt').value || 0, syrupBrix: +$('sb').value || 0 }; }
-  function save(s) { store.set('nunchi_ttk_' + slug(cur.name), s); }
+  function save(s) { s.base = base(cur); store.set('nunchi_ttk_' + slug(cur.name), s); }
   function cordKpi(t, c) {
     var cr = CORR[t.category], out = cr && (c.index < cr[0] || c.index > cr[1]);
     return kpi('Индекс Brix/кисл.', fmt(c.index, 1), (cr ? 'коридор ' + cr[0] + '–' + cr[1] + ' · ' : '') + 'напиток 1:4 — ' + fmt(c.drinkBrix, 1) + ' Bx', out ? 'alert' : '');
