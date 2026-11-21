@@ -1,15 +1,14 @@
 {
  "ok": true,
  "step": "готово",
- "at": "21.11.2026 23:17",
+ "at": "21.11.2026 23:21",
  "log": [
-  "",
   "Use x-request-id, x-server-trace-id, x-client-trace-id for investigation of issues in cloud support",
   "",
   "gRPC status details:",
   "- '@type': type.googleapis.com/google.rpc.RequestInfo",
-  "  request_id: 192cc6cf-0d51-4389-a47f-2c03a24c2f7c",
-  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-21T20-16-43.390-yc_iam_service-account_get.txt",
+  "  request_id: be969d23-dc0c-41d4-a76a-6a6279b520dd",
+  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-21T20-21-01.104-yc_iam_service-account_get.txt",
   "Traceback (most recent call last):",
   "  File \"<string>\", line 1, in <module>",
   "  File \"/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/json/__init__.py\", line 293, in load",
@@ -25,9 +24,10 @@
   "    raise JSONDecodeError(\"Expecting value\", s, err.value) from None",
   "json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
   "YC_FOLDER_ID не похож на ID каталога, использую b1g6vsokqeducjk9l8vl",
+  "...1s...done (3s)",
+  "группа не найдена: бот не видел сообщений в группе ",
   "...1s...done (2s)",
-  "...1s...done (2s)",
-  "health: {\"ok\": true, \"bot\": false, \"lines\": {\"tonics\": 6, \"cordials\": 5}, \"stock\": 63, \"errors\": [], \"updated\": \"21.11.2026 23:17\"}"
+  "health: {\"ok\": true, \"bot\": false, \"lines\": {\"tonics\": 6, \"cordials\": 5}, \"stock\": 63, \"errors\": [], \"updated\": \"21.11.2026 23:21\"}"
  ],
  "url": "https://functions.yandexcloud.net/d4emu18dclf7ij3lgve1",
  "health": {
@@ -39,6 +39,6 @@
   },
   "stock": 63,
   "errors": [],
-  "updated": "21.11.2026 23:17"
+  "updated": "21.11.2026 23:21"
  }
 }
