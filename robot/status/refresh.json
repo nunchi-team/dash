@@ -1,17 +1,12 @@
 {
- "checked": "22.11.2026 00:40",
+ "checked": "22.11.2026 00:43",
  "ok": true,
  "changed": true,
  "stock_import": {
   "ok": true,
-  "imported": true,
-  "source": "Нунчи склад — остатки новые",
-  "items": 130,
-  "with_alias": 48,
-  "warehouses": [
-   "Основной склад",
-   "Тихвин"
-  ]
+  "imported": false,
+  "reason": "этот отчёт уже загружен",
+  "source": "Нунчи склад — остатки новые"
  },
  "lines": {
   "tonics": 6,
@@ -19,5 +14,5 @@
  },
  "stock": 179,
  "errors": [],
- "updated": "22.11.2026 00:41"
+ "updated": "22.11.2026 00:43"
 }
