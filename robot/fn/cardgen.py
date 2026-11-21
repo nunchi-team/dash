@@ -139,6 +139,28 @@ def summary_row(rec, num, S, first, yrow, qrow, meta, kind):
             '=TEXT(C{y},"0")&" л · "&TEXT(E{y},"0")&" бут."'.format(y=yrow), j]
 
 
+def _col(i):
+    return chr(ord("A") + i)
+
+
+def write_cells(op, r0, rows):
+    """Значения — setValues (без формул), формулы — setFormulas (английская запись, не зависит от языка таблицы)."""
+    width = max(len(r) for r in rows)
+    vals = [[("" if isinstance(v, str) and v.startswith("=") else v) for v in r] + [""] * (width - len(r)) for r in rows]
+    op(action="write", range="A%d:%s%d" % (r0, _col(width - 1), r0 + len(rows) - 1), values=vals)
+    for i, r in enumerate(rows):
+        j = 0
+        while j < len(r):
+            if isinstance(r[j], str) and r[j].startswith("="):
+                k = j
+                while k + 1 < len(r) and isinstance(r[k + 1], str) and r[k + 1].startswith("="):
+                    k += 1
+                op(action="formulas", range="%s%d:%s%d" % (_col(j), r0 + i, _col(k), r0 + i), values=[r[j:k + 1]])
+                j = k + 1
+            else:
+                j += 1
+
+
 def plan_ops(sheet_id, values, rec, ref):
     """Возвращает список операций моста для добавления рецепта rec в лист values."""
     L = layout(values)
@@ -172,9 +194,8 @@ def plan_ops(sheet_id, values, rec, ref):
     spr_hdr = L["spr_hdr"] + sh + count
     sprav = "$B$%d:$I$%d" % (spr_hdr + 1, spr_hdr + 1 + max(60, L["ref_last"] - L["spr_hdr"] + 40))
     rows, first, yrow, qrow = card_rows(rec, P, S, sprav, kind)
-    op(action="write", range="A%d:R%d" % (P, P + len(rows) - 1), values=rows)
-    op(action="write", range="A%d:J%d" % (S, S),
-       values=[summary_row(rec, L["n_sum"] + 1, S, first, yrow, qrow, P + 1, kind)])
+    write_cells(op, P, rows)
+    write_cells(op, S, [summary_row(rec, L["n_sum"] + 1, S, first, yrow, qrow, P + 1, kind)])
     # 4) новое сырьё в справочник
     new_ref = rec.get("newRef") or []
     if new_ref:
