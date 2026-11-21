@@ -131,8 +131,18 @@ td.order { color: var(--bad); font-weight: 800; }
 .batch .lack { grid-column: 2 / -1; font-size: 13px; color: var(--bad); margin: 0; }
 .empty { border: 1.5px dashed var(--line); border-radius: 18px; padding: 28px; text-align: center; color: var(--muted); }
 @media (max-width: 640px) { .tagline { display: none; } th:nth-child(5), td:nth-child(5) { display: none; } .batch { grid-template-columns: auto 1fr; } .batch .mv { grid-column: 2; } .planbar { border-radius: 18px; } .ot th:nth-child(2), .ot td:nth-child(2), .tt.hasstock th:nth-child(2), .tt.hasstock tr:not(.grp) td:nth-child(2) { display: none; } .meta { margin-left: 0; width: 100%; justify-content: space-between; } th, td { padding: 8px 9px; } }
+dialog.pub { overflow: auto; border: 0; border-radius: 20px; padding: 0; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); background: var(--bg); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+dialog.pub::backdrop { background: rgba(0,0,0,.45); }
+.pub form { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.pub .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pub input, .pub textarea { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); font-size: 15px; outline: none; }
+.pub input:focus, .pub textarea:focus { border-color: var(--ink); }
+.pub .prev { background: var(--panel); border-radius: 14px; padding: 12px 14px; font-size: 13px; white-space: pre-wrap; max-height: 260px; overflow: auto; line-height: 1.45; }
+.pub .row2 { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.btn.tg { background: #2AABEE; color: #fff; }
+@media (max-width: 520px) { .pub .two { grid-template-columns: 1fr; } }
 @media print {
-  .top, .back, .actions, .controls, .meta, .planbar, .mv, .pbtn { display: none !important; }
+  .top, .back, .actions, .controls, .meta, .planbar, .mv, .pbtn, dialog { display: none !important; }
   body { font-size: 12px; } main { padding: 0; } .panel { background: none; padding: 0; } .kpi { border: 1px solid #ccc; }
 }
 </style>
@@ -191,7 +201,7 @@ td.order { color: var(--bad); font-weight: 800; }
             <div class="stepper"><button data-d="-0.5" data-t="sb" aria-label="Минус 0,5">−</button><input id="sb" type="number" inputmode="decimal" step="0.5"><button data-d="0.5" data-t="sb" aria-label="Плюс 0,5">+</button></div></div>
         </div>
         <div class="kpis" id="kpis"></div>
-        <div class="actions"><button class="btn ghost" id="toPlan"></button><button class="btn ghost" id="reset">Вернуть значения из ТТК</button><button class="btn ghost" id="print">Печать ТТК</button></div>
+        <div class="actions"><button class="btn tg" id="pubOne" hidden>📣 Опубликовать варку</button><button class="btn ghost" id="toPlan"></button><button class="btn ghost" id="reset">Вернуть значения из ТТК</button><button class="btn ghost" id="print">Печать ТТК</button></div>
       </div>
       <div id="stockNote"></div>
       <div class="tw"><table class="tt">
@@ -211,7 +221,7 @@ td.order { color: var(--bad); font-weight: 800; }
       <div id="batches" style="display:flex;flex-direction:column;gap:10px"></div>
       <div class="panel" id="orderPanel">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h2 id="orderTitle">Что заказать</h2>
-          <div class="actions"><button class="btn ghost" id="copyOrder">Скопировать список</button><button class="btn ghost" id="printPlan">Печать</button></div></div>
+          <div class="actions"><button class="btn tg" id="pubPlan" hidden>📣 Опубликовать план</button><button class="btn ghost" id="copyOrder">Скопировать список</button><button class="btn ghost" id="printPlan">Печать</button></div></div>
         <div class="tw"><table class="ot">
           <thead><tr><th>Сырьё</th><th class="n">Нужно на план</th><th class="n">На складе</th><th class="n">Заказать</th><th>Поставщик</th></tr></thead>
           <tbody id="orderBody"></tbody>
@@ -221,6 +231,23 @@ td.order { color: var(--bad); font-weight: 800; }
     </section>
   </main>
 </div>
+
+<dialog class="pub" id="pubDlg">
+  <form method="dialog" id="pubForm">
+    <h2 id="pubTitle">Опубликовать варку</h2>
+    <p class="note" style="margin:0">Сообщение уйдёт в группу варки от бота.</p>
+    <div class="two">
+      <div class="field"><label for="pDate">Дата варки</label><input id="pDate" type="date" required></div>
+      <div class="field"><label for="pBatch">Партия №</label><input id="pBatch" placeholder="необязательно"></div>
+      <div class="field"><label for="pPlant">Завод</label><input id="pPlant" placeholder="например, Воронеж"></div>
+      <div class="field"><label for="pWho">Кто варит</label><input id="pWho" placeholder="имя"></div>
+    </div>
+    <div class="field"><label for="pNote">Комментарий</label><textarea id="pNote" rows="2" placeholder="необязательно"></textarea></div>
+    <div class="field"><label>Как будет выглядеть</label><div class="prev" id="pPrev"></div></div>
+    <p class="err" id="pErr" style="margin:0"></p>
+    <div class="row2"><button class="btn ghost" type="button" id="pCancel">Отмена</button><button class="btn tg" type="button" id="pSend">Отправить в группу</button></div>
+  </form>
+</dialog>
 
 <script id="payload" type="application/json">__PAYLOAD__</script>
 <script>
@@ -270,6 +297,7 @@ td.order { color: var(--bad); font-weight: 800; }
     box.hidden = !errs.length;
     box.textContent = errs.length ? '⚠️ ' + errs.join(' · ') + ' — проверьте формат таблицы.' : '';
   }
+  var PW = '';
   async function login(pw, remember, silent) {
     $('loginBtn').disabled = true; $('err').textContent = silent ? '' : 'Проверяю…';
     D = null;
@@ -277,6 +305,7 @@ td.order { color: var(--bad); font-weight: 800; }
     if (live && live.data) D = live.data;
     if (!D) { try { D = await decrypt(pw); D.live = false; } catch (e) { D = null; } }
     if (!D) { $('loginBtn').disabled = false; $('err').textContent = silent ? '' : 'Неверный пароль'; store.del('nunchi_ttk_pw'); return; }
+    PW = pw;
     if (remember) store.set('nunchi_ttk_pw', pw);
     $('login').hidden = true; $('app').hidden = false;
     if (!D.lines) D.lines = [{ key: 'tonics', title: 'Тоники', recipes: D.tonics, ref: D.ref }];
@@ -468,6 +497,7 @@ td.order { color: var(--bad); font-weight: 800; }
     $('tags').replaceChildren(el('span', { cls: 'pill rd' }, [el('span', { cls: 'dot', style: 'background:' + cc }), t.category]), el('span', { cls: 'pill ' + (t.status === 'Актив' ? 'ok' : 'rd'), text: t.status }), el('span', { cls: 'pill rd', text: 'Бутылка ' + t.bottleMl + ' мл' }));
     Array.prototype.forEach.call($('sweet').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s.sweetener)); });
     $('sbField').hidden = c.useSugar;
+    $('pubOne').hidden = !(D.live && D.botReady);
     var on = inPlan(t); $('toPlan').textContent = on ? '✓ В плане варок' : '+ Добавить в план варок';
     var W = s.water;
     var main = c.useSugar
@@ -585,6 +615,7 @@ td.order { color: var(--bad); font-weight: 800; }
     }) : [el('tr', {}, [el('td', { colspan: '5', text: 'Всё сырьё есть на складе.' })])]);
     $('showAll').textContent = showAll ? 'Показать только то, что заказать' : 'Показать всё сырьё плана (' + pc.items.length + ')';
     $('copyOrder').hidden = !pc.toOrder.length;
+    $('pubPlan').hidden = !(D.live && D.botReady);
     $('copyOrder').onclick = function () {
       var txt = 'Заказ сырья — план: ' + pc.batches.map(function (b) { return b.t.name + ' (' + fmt(b.p.water, 0) + ' л)'; }).join(', ') + '\n' +
         pc.toOrder.map(function (o) { return '• ' + o.name + ' — ' + show(o.order, o.unit, o.dens) + (o.supplier ? ' (' + o.supplier + ')' : ''); }).join('\n');
@@ -593,6 +624,66 @@ td.order { color: var(--bad); font-weight: 800; }
   }
   $('showAll').onclick = function () { showAll = !showAll; renderPlan(); };
   $('printPlan').onclick = function () { window.print(); };
+
+  /* ---------- публикация варки ---------- */
+  function esc(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function strip(h) { return h.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'); }
+  function dateRu(v) { var p = (v || '').split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : v; }
+  function batchMsg(t, s, meta, idx, total) {
+    var c = calc(t, s), W = s.water, L = [];
+    L.push('🧪 <b>' + (total > 1 ? 'Варка ' + idx + ' из ' + total + ': ' : 'Варка: ') + esc(t.name) + '</b>');
+    L.push([(LINE[t._line] || LINE.tonics).tag, dateRu(meta.date), meta.plant ? 'завод ' + esc(meta.plant) : '', meta.batch ? 'партия № ' + esc(meta.batch) : ''].filter(Boolean).join(' · '));
+    L.push('');
+    L.push('Вода: <b>' + fmt(W, 0) + ' л</b> · ' + (c.useSugar ? 'сахар <b>' + fmt(c.sugarG * W / 1000, 1) + ' кг</b>' : 'сироп ВЛ <b>' + fmt(c.syrupMl * W / 1000, 1) + ' л</b> (Brix сиропа ' + fmt(s.syrupBrix, 1) + ')'));
+    L.push('Brix цель ' + fmt(s.brix, 1) + ' · выход ≈ ' + fmt(c.yieldL, 0) + ' л · ' + fmt(c.bottles, 0) + ' бут. по ' + t.bottleMl + ' мл');
+    L.push('');
+    L.push('<b>Состав на партию:</b>');
+    var groups = {}; c.rows.forEach(function (r) { var g = r.it.group || 'Прочее'; if (g === 'Сироп') g = 'Сахар'; (groups[g] = groups[g] || []).push(r); });
+    ORDER.concat(Object.keys(groups).filter(function (g) { return ORDER.indexOf(g) < 0; })).forEach(function (g) {
+      (groups[g] || []).forEach(function (r) {
+        var it = r.it, q;
+        if (it.auto) { var isSugar = it.group === 'Сахар'; if (isSugar !== c.useSugar) return; q = isSugar ? fmt(c.sugarG * W / 1000, 2) + ' кг' : fmt(c.syrupMl * W / 1000, 2) + ' л'; }
+        else q = batch(r.g, it.outUnit, r.ref.density || 1, W);
+        L.push('• ' + esc(it.name) + ' — ' + q);
+      });
+    });
+    if (hasStock() && !D.stockTest) {
+      var k = check(t, s), bad = k.short.concat(k.missing);
+      L.push('');
+      L.push(bad.length ? '⚠️ Не хватает на складе: ' + bad.map(function (n) { return esc(n.name) + (n.have == null ? '' : ' ' + show(n.g - n.have, n.unit, n.dens)); }).join(', ') : '✅ Сырья на складе хватает');
+    }
+    if (meta.who) L.push('', 'Варит: ' + esc(meta.who));
+    if (meta.note) L.push((meta.who ? '' : '\n') + '💬 ' + esc(meta.note));
+    return L.join('\n');
+  }
+  var pubItems = [];
+  function pubMeta() { return { date: $('pDate').value, batch: $('pBatch').value.trim(), plant: $('pPlant').value.trim(), who: $('pWho').value.trim(), note: $('pNote').value.trim() }; }
+  function pubTexts() { var m = pubMeta(); return pubItems.map(function (x, i) { return batchMsg(x.t, x.s, m, i + 1, pubItems.length); }); }
+  function pubPreview() { $('pPrev').textContent = pubTexts().map(strip).join('\n\n— — —\n\n'); }
+  function openPub(items, title) {
+    pubItems = items; $('pubTitle').textContent = title; $('pErr').textContent = '';
+    var d = new Date(); $('pDate').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    var mem = store.get('nunchi_pub', {}); $('pPlant').value = mem.plant || ''; $('pWho').value = mem.who || ''; $('pBatch').value = ''; $('pNote').value = '';
+    $('pSend').disabled = false; $('pSend').textContent = 'Отправить в группу';
+    pubPreview(); $('pubDlg').showModal();
+  }
+  ['pDate', 'pBatch', 'pPlant', 'pWho', 'pNote'].forEach(function (id) { $(id).addEventListener('input', pubPreview); });
+  $('pCancel').onclick = function () { $('pubDlg').close(); };
+  $('pSend').onclick = async function () {
+    var m = pubMeta(); store.set('nunchi_pub', { plant: m.plant, who: m.who });
+    $('pSend').disabled = true; $('pSend').textContent = 'Отправляю…'; $('pErr').textContent = '';
+    try {
+      var r = await fetch(ROBOT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'publish', pw: PW, texts: pubTexts() }) });
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok || !j.ok) throw new Error(j.error || ('ошибка ' + r.status));
+      $('pSend').textContent = 'Отправлено ✓'; setTimeout(function () { $('pubDlg').close(); }, 900);
+    } catch (e) { $('pSend').disabled = false; $('pSend').textContent = 'Отправить в группу'; $('pErr').textContent = 'Не отправилось: ' + e.message; }
+  };
+  $('pubOne').onclick = function () { openPub([{ t: cur, s: read() }], 'Опубликовать варку'); };
+  $('pubPlan').onclick = function () {
+    var pc = planCalc(); if (!pc.batches.length) return;
+    openPub(pc.batches.map(function (b) { return { t: b.t, s: b.s }; }), 'Опубликовать план · ' + pc.batches.length + ' ' + plural(pc.batches.length, 'варка', 'варки', 'варок'));
+  };
 })();
 </script>
 </body>

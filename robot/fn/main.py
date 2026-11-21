@@ -4,9 +4,10 @@
 Запросы — POST с JSON:
   {"action": "health"}                      — проверка связи (без данных)
   {"action": "data", "pw": "..."}           — рецепты всех линеек + склад
+  {"action": "publish", "pw": "...", "texts": ["..."]} — отправить варку в группу Telegram (HTML)
 Переменные окружения: BRIDGE_URL, BRIDGE_KEY, RECIPES_PASSWORD, (необяз.) TG_BOT_TOKEN, TG_CHAT_ID.
 """
-import base64, datetime, hmac, json, os, time, traceback, urllib.request
+import base64, datetime, hmac, json, os, time, traceback, urllib.error, urllib.request
 
 from parsers import parse_ttk, parse_stock
 
@@ -58,6 +59,32 @@ def get_data(fresh=False):
     return _cache["data"]
 
 
+def tg_chat():
+    cid = os.environ.get("TG_CHAT_ID", "").strip()
+    if not cid:
+        p = os.path.join(os.path.dirname(__file__), "tg_chat.json")
+        if os.path.exists(p):
+            cid = str(json.load(open(p)).get("chat_id", ""))
+    return cid
+
+
+def bot_ready():
+    return bool(os.environ.get("TG_BOT_TOKEN") and tg_chat())
+
+
+def tg_send(text):
+    url = "https://api.telegram.org/bot%s/sendMessage" % os.environ["TG_BOT_TOKEN"]
+    body = json.dumps({"chat_id": tg_chat(), "text": text, "parse_mode": "HTML", "disable_web_page_preview": True}).encode()
+    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            res = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        res = json.loads(e.read().decode() or "{}")
+    if not res.get("ok"):
+        raise RuntimeError("Telegram: " + str(res.get("description", "ошибка")))
+
+
 def check_pw(pw):
     want = os.environ.get("RECIPES_PASSWORD", "")
     return bool(want) and hmac.compare_digest(str(pw or "").encode(), want.encode())
@@ -91,13 +118,25 @@ def handler(event, context):
     try:
         if action == "health":
             d = get_data(fresh=True)
-            return reply(200, {"ok": True, "lines": {l["key"]: len(l["recipes"]) for l in d["lines"]},
+            return reply(200, {"ok": True, "bot": bot_ready(), "lines": {l["key"]: len(l["recipes"]) for l in d["lines"]},
                                "stock": len(d.get("stock", {})), "errors": d["errors"], "updated": d["updated"]})
         if action == "data":
             if not check_pw(req.get("pw")):
                 time.sleep(1)
                 return reply(401, {"ok": False, "error": "wrong password"})
-            return reply(200, {"ok": True, "data": get_data(fresh=bool(req.get("fresh")))})
+            d = dict(get_data(fresh=bool(req.get("fresh"))), botReady=bot_ready())
+            return reply(200, {"ok": True, "data": d})
+        if action == "publish":
+            if not check_pw(req.get("pw")):
+                time.sleep(1)
+                return reply(401, {"ok": False, "error": "wrong password"})
+            if not bot_ready():
+                return reply(409, {"ok": False, "error": "бот не настроен"})
+            texts = [str(t)[:4000] for t in (req.get("texts") or [])][:10]
+            for t in texts:
+                tg_send(t)
+                time.sleep(0.4)
+            return reply(200, {"ok": True, "sent": len(texts)})
         return reply(400, {"ok": False, "error": "unknown action"})
     except Exception as e:
         traceback.print_exc()

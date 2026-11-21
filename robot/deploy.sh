@@ -49,6 +49,25 @@ if ! yc serverless function get --name "$NAME" >/dev/null 2>>"$LOG"; then
 fi
 yc serverless function allow-unauthenticated-invoke --name "$NAME" >>"$LOG" 2>&1 || fail "публичный доступ к функции"
 
+# группа Telegram: ищем по сообщению /start@бот в группе (getUpdates), сохраняем в robot/fn/tg_chat.json
+if [ -n "${TG_BOT_TOKEN:-}" ] && [ -z "${TG_CHAT_ID:-}" ] && [ ! -s robot/fn/tg_chat.json ]; then
+  curl -s -m 20 "https://api.telegram.org/bot$TG_BOT_TOKEN/getUpdates?allowed_updates=%5B%22message%22,%22my_chat_member%22%5D" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+chat = None
+for u in d.get("result", []):
+    m = u.get("message") or u.get("my_chat_member") or {}
+    c = m.get("chat") or {}
+    if c.get("type") in ("group", "supergroup"):
+        chat = {"chat_id": c["id"], "title": c.get("title", "")}
+if chat:
+    json.dump(chat, open("robot/fn/tg_chat.json", "w"), ensure_ascii=False)
+    print("группа найдена:", chat["title"])
+else:
+    print("группа не найдена: бот не видел сообщений в группе", d.get("description", ""))
+' >>"$LOG" 2>&1
+fi
+
 ENVS="BRIDGE_URL=$(echo "$BRIDGE_URL" | tr -d '[:space:]'),BRIDGE_KEY=$(echo "$BRIDGE_KEY" | tr -d '[:space:]'),RECIPES_PASSWORD=$RECIPES_PASSWORD"
 [ -n "${TG_BOT_TOKEN:-}" ] && ENVS="$ENVS,TG_BOT_TOKEN=$TG_BOT_TOKEN"
 [ -n "${TG_CHAT_ID:-}" ] && ENVS="$ENVS,TG_CHAT_ID=$TG_CHAT_ID"
