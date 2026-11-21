@@ -1,0 +1,55 @@
+name: Робот рецептов
+
+on:
+  push:
+    branches: [main]
+    paths: ['robot/fn/**', 'robot/deploy.sh', 'tools/**', '.github/workflows/robot.yml']
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: robot
+  cancel-in-progress: false
+
+jobs:
+  robot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet cryptography
+
+      - name: Выложить робота в Yandex Cloud
+        if: github.event_name != 'schedule'
+        env:
+          YC_SA_KEY: ${{ secrets.YC_SA_KEY }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          BRIDGE_URL: ${{ secrets.BRIDGE_URL }}
+          BRIDGE_KEY: ${{ secrets.BRIDGE_KEY }}
+          RECIPES_PASSWORD: ${{ secrets.RECIPES_PASSWORD }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: bash robot/deploy.sh
+
+      - name: Обновить запасную копию сайта из таблиц
+        env:
+          BRIDGE_URL: ${{ secrets.BRIDGE_URL }}
+          BRIDGE_KEY: ${{ secrets.BRIDGE_KEY }}
+          RECIPES_PASSWORD: ${{ secrets.RECIPES_PASSWORD }}
+        run: python3 tools/refresh.py
+
+      - name: Сохранить результат
+        run: |
+          git config user.name "nunchi-robot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for f in robot/status robot/endpoint.json recipes/index.html; do [ -e "$f" ] && git add -A "$f"; done
+          if ! git diff --cached --quiet; then
+            git commit -m "Робот: обновление данных и статуса"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done
+          fi

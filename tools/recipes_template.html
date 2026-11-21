@@ -167,6 +167,7 @@ td.order { color: var(--bad); font-weight: 800; }
         <h1 id="listTitle">ТТК тоников</h1>
         <p class="sub"><span id="listWhat">Откройте тоник</span>: задайте воду на партию, подсластитель и Brix — состав и количество сиропа пересчитаются сразу. Кнопкой «В план» отметьте вкусы, которые будете варить, — сайт посчитает сырьё на все сразу.</p>
       </div>
+      <div class="banner bad" id="liveErr" hidden style="margin-bottom:10px"></div>
       <div id="stockInfo" style="margin-bottom:14px"></div>
       <div class="grid" id="grid"></div>
       <div class="planbar" id="planbar" hidden></div>
@@ -225,6 +226,7 @@ td.order { color: var(--bad); font-weight: 800; }
 <script>
 (function () {
   var P = JSON.parse(document.getElementById('payload').textContent);
+  var ROBOT = '__ROBOT_URL__'; if (ROBOT.indexOf('__') === 0) ROBOT = '';
   var D = null, cur = null;
   var $ = function (id) { return document.getElementById(id); };
   var store = { get: function (k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -252,15 +254,37 @@ td.order { color: var(--bad); font-weight: 800; }
     var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(P.i) }, key, b64(P.c));
     return JSON.parse(new TextDecoder().decode(pt));
   }
+  async function fetchLive(pw) {
+    if (!ROBOT || !window.fetch) return null;
+    var ctl = window.AbortController ? new AbortController() : null, timer = ctl && setTimeout(function () { ctl.abort(); }, 15000);
+    try {
+      var r = await fetch(ROBOT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'data', pw: pw }), signal: ctl ? ctl.signal : undefined });
+      if (r.status === 401) return { bad: true };
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { return null; } finally { if (timer) clearTimeout(timer); }
+  }
+  function showErrors() {
+    var errs = (D.errors || []).slice();
+    var box = $('liveErr');
+    box.hidden = !errs.length;
+    box.textContent = errs.length ? '⚠️ ' + errs.join(' · ') + ' — проверьте формат таблицы.' : '';
+  }
   async function login(pw, remember, silent) {
     $('loginBtn').disabled = true; $('err').textContent = silent ? '' : 'Проверяю…';
-    try { D = await decrypt(pw); } catch (e) { $('loginBtn').disabled = false; $('err').textContent = silent ? '' : 'Неверный пароль'; store.del('nunchi_ttk_pw'); return; }
+    D = null;
+    var live = await fetchLive(pw);
+    if (live && live.data) D = live.data;
+    if (!D) { try { D = await decrypt(pw); D.live = false; } catch (e) { D = null; } }
+    if (!D) { $('loginBtn').disabled = false; $('err').textContent = silent ? '' : 'Неверный пароль'; store.del('nunchi_ttk_pw'); return; }
     if (remember) store.set('nunchi_ttk_pw', pw);
     $('login').hidden = true; $('app').hidden = false;
     if (!D.lines) D.lines = [{ key: 'tonics', title: 'Тоники', recipes: D.tonics, ref: D.ref }];
     D.tonics = [];
     D.lines.forEach(function (l) { l.recipes.forEach(function (r) { r._ref = l.ref; r._line = l.key; D.tonics.push(r); }); });
-    $('stamp').textContent = 'ТТК от ' + D.updated;
+    $('stamp').textContent = D.live ? 'Из таблиц · ' + D.updated.slice(-5) : 'Копия от ' + D.updated;
+    $('stamp').title = D.live ? 'Данные загружены из Google Таблиц только что' : 'Робот недоступен — показана сохранённая копия';
+    showErrors();
     route();
   }
   $('loginForm').addEventListener('submit', function (e) { e.preventDefault(); login($('pwd').value, $('remember').checked); });

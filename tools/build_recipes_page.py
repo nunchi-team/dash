@@ -13,5 +13,7 @@ ct = AESGCM(key).encrypt(iv, json.dumps(data, ensure_ascii=False).encode(), None
 b = lambda x: base64.b64encode(x).decode()
 payload = json.dumps({"s": b(salt), "i": b(iv), "c": b(ct), "n": n})
 tpl = open(os.path.join(os.path.dirname(__file__), "recipes_template.html"), encoding="utf-8").read()
-open(out, "w", encoding="utf-8").write(tpl.replace("__PAYLOAD__", payload))
+ep = os.path.join(os.path.dirname(__file__), "..", "robot", "endpoint.json")
+robot = json.load(open(ep)).get("url", "") if os.path.exists(ep) else ""
+open(out, "w", encoding="utf-8").write(tpl.replace("__PAYLOAD__", payload).replace("__ROBOT_URL__", robot))
 print("ok", out, len(ct), "bytes encrypted")
