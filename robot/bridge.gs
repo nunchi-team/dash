@@ -1,7 +1,9 @@
 /**
  * Нунчи — мост к Google Таблицам для робота (Yandex Cloud).
  * Вставляется один раз, больше не меняется.
- * Умеет: прочитать лист таблицы, записать значения в диапазон, добавить строки.
+ * Умеет: прочитать лист таблицы, записать значения в диапазон, добавить строки,
+ * передать сообщение в Telegram (из облака Яндекса Telegram недоступен).
+ * Версия 2.
  * Работает только с файлами из папки «claude рецепты нунчи» и только по секретному ключу.
  */
 var ROOT_FOLDER_ID = '1phFTtDIWs5LSYHuYxu1Y2ZG-_nHhZ8b3';
@@ -15,6 +17,7 @@ function setup() {
     props.setProperty('BRIDGE_KEY', key);
   }
   DriveApp.getFolderById(ROOT_FOLDER_ID).getName(); // запрос доступа к Диску
+  UrlFetchApp.fetch('https://api.telegram.org', { muteHttpExceptions: true }); // запрос доступа к интернету
   Logger.log('BRIDGE_KEY = ' + key);
 }
 
@@ -35,6 +38,7 @@ function doGet() { return out({ ok: true, service: 'nunchi-bridge' }); }
 
 function run(op) {
   if (op.action === 'list') return { files: listFiles() };
+  if (op.action === 'telegram') return telegram(op);
   allowed(op.id);
   var ss = SpreadsheetApp.openById(op.id);
   var sh = op.sheet ? ss.getSheetByName(op.sheet) : ss.getSheets()[0];
@@ -70,6 +74,16 @@ function allowed(id) {
     level = next;
   }
   throw new Error('file outside root folder');
+}
+
+/** Пересылка в Telegram: только методы отправки и проверки. */
+function telegram(op) {
+  var allowedMethods = ['sendMessage', 'getMe', 'getUpdates'];
+  if (allowedMethods.indexOf(op.method) < 0) throw new Error('method not allowed');
+  var r = UrlFetchApp.fetch('https://api.telegram.org/bot' + op.token + '/' + op.method, {
+    method: 'post', contentType: 'application/json', payload: JSON.stringify(op.payload || {}), muteHttpExceptions: true
+  });
+  return JSON.parse(r.getContentText());
 }
 
 function listFiles() {

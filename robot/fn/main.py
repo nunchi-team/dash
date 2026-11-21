@@ -81,18 +81,34 @@ def bot_ready():
     return bool(os.environ.get("TG_BOT_TOKEN") and tg_chat())
 
 
+_tg_direct = {}
+
+
 def tg_send(text):
-    url = "https://api.telegram.org/bot%s/sendMessage" % os.environ["TG_BOT_TOKEN"]
     msg = {"chat_id": tg_chat(), "text": text, "parse_mode": "HTML", "disable_web_page_preview": True}
     if tg_thread():
         msg["message_thread_id"] = tg_thread()
-    body = json.dumps(msg).encode()
-    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            res = json.loads(r.read().decode())
-    except urllib.error.HTTPError as e:
-        res = json.loads(e.read().decode() or "{}")
+    token = os.environ["TG_BOT_TOKEN"]
+    res, direct_err = None, _tg_direct.get("err")
+    if time.time() - _tg_direct.get("t", 0) > 600:
+        direct_err = None
+    if direct_err is None:
+      try:  # напрямую (из облака Яндекса Telegram может быть недоступен)
+        req = urllib.request.Request("https://api.telegram.org/bot%s/sendMessage" % token,
+                                     data=json.dumps(msg).encode(), headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=4) as r:
+                res = json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            res = json.loads(e.read().decode() or "{}")
+      except Exception as e:
+        direct_err = e
+        _tg_direct.update(err=str(e), t=time.time())
+    if res is None:  # через мост Google
+        try:
+            res = bridge([{"action": "telegram", "token": token, "method": "sendMessage", "payload": msg}], timeout=20)[0]
+        except Exception as e:
+            raise RuntimeError("Telegram недоступен из облака (%s), а мост ещё старой версии: %s" % (direct_err, e))
     if not res.get("ok"):
         raise RuntimeError("Telegram: " + str(res.get("description", "ошибка")))
 

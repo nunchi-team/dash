@@ -84,7 +84,7 @@ ENVS="BRIDGE_URL=$(echo "$BRIDGE_URL" | tr -d '[:space:]'),BRIDGE_KEY=$(echo "$B
 [ -n "${TG_BOT_TOKEN:-}" ] && ENVS="$ENVS,TG_BOT_TOKEN=$TG_BOT_TOKEN"
 [ -n "${TG_CHAT_ID:-}" ] && ENVS="$ENVS,TG_CHAT_ID=$TG_CHAT_ID"
 yc serverless function version create --function-name "$NAME" --runtime python312 --entrypoint main.handler \
-  --memory 256m --execution-timeout 30s --source-path robot/fn --environment "$ENVS" >/dev/null 2>>"$LOG" || fail "выкладка версии"
+  --memory 256m --execution-timeout 60s --source-path robot/fn --environment "$ENVS" >/dev/null 2>>"$LOG" || fail "выкладка версии"
 
 ID=$(yc serverless function get --name "$NAME" --format json | python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])')
 URL="https://functions.yandexcloud.net/$ID"
