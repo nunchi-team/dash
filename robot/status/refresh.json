@@ -1,18 +1,25 @@
 {
- "checked": "22.11.2026 00:43",
+ "checked": "22.11.2026 00:52",
  "ok": true,
  "changed": true,
  "stock_import": {
   "ok": true,
-  "imported": false,
-  "reason": "этот отчёт уже загружен",
-  "source": "Нунчи склад — остатки новые"
+  "imported": true,
+  "source": "Остатки товаров на складах",
+  "items": 116,
+  "with_alias": 31,
+  "warehouses": [
+   "ИНТЕРНЕТ РЕШЕНИЯ ООО Озон",
+   "Основной склад",
+   "Склад Юг",
+   "Тихвин"
+  ]
  },
  "lines": {
   "tonics": 6,
   "cordials": 5
  },
- "stock": 179,
+ "stock": 147,
  "errors": [],
- "updated": "22.11.2026 00:43"
+ "updated": "22.11.2026 00:53"
 }
