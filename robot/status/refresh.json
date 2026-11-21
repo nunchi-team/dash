@@ -1,12 +1,11 @@
 {
- "checked": "21.11.2026 23:39",
+ "checked": "21.11.2026 23:43",
  "ok": true,
- "changed": true,
+ "changed": false,
  "lines": {
   "tonics": 6,
   "cordials": 5
  },
  "stock": 63,
- "errors": [],
- "updated": "21.11.2026 23:39"
+ "errors": []
 }
