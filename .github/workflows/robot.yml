@@ -44,6 +44,13 @@ jobs:
           BRIDGE_KEY: ${{ secrets.BRIDGE_KEY }}
         run: python3 tools/test_add.py && git rm -q robot/test/request.json
 
+      - name: Список таблиц в папке (по запросу)
+        if: hashFiles('robot/test/list.flag') != ''
+        env:
+          BRIDGE_URL: ${{ secrets.BRIDGE_URL }}
+          BRIDGE_KEY: ${{ secrets.BRIDGE_KEY }}
+        run: python3 tools/list_drive.py; git rm -q robot/test/list.flag
+
       - name: Обновить запасную копию сайта из таблиц
         env:
           BRIDGE_URL: ${{ secrets.BRIDGE_URL }}
