@@ -42,6 +42,7 @@ if [ "${FOLDER:0:3}" != "b1g" ]; then
   echo "YC_FOLDER_ID не похож на ID каталога, использую $FOLDER" >>"$LOG"
 fi
 yc config set folder-id "$FOLDER" >>"$LOG" 2>&1 || fail "ID каталога (YC_FOLDER_ID)"
+unset YC_FOLDER_ID   # иначе yc берёт каталог из окружения, а не из настроек
 
 if ! yc serverless function get --name "$NAME" >/dev/null 2>>"$LOG"; then
   yc serverless function create --name "$NAME" --description "Нунчи: рецепты, склад, варки" >>"$LOG" 2>&1 || fail "создание функции"
