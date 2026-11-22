@@ -1,13 +1,13 @@
 {
  "ok": true,
  "step": "готово",
- "at": "22.11.2026 14:00",
+ "at": "22.11.2026 14:46",
  "log": [
   "",
   "gRPC status details:",
   "- '@type': type.googleapis.com/google.rpc.RequestInfo",
-  "  request_id: d5af7b20-0606-4bc6-acce-8ad64e3ac1b4",
-  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-22T10-59-55.204-yc_iam_service-account_get.txt",
+  "  request_id: ddd44dd6-9b53-4c19-8fe0-9f12bd19429a",
+  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-22T11-45-30.175-yc_iam_service-account_get.txt",
   "Traceback (most recent call last):",
   "  File \"<string>\", line 1, in <module>",
   "  File \"/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/json/__init__.py\", line 293, in load",
@@ -25,9 +25,9 @@
   "YC_FOLDER_ID не похож на ID каталога, использую b1g6vsokqeducjk9l8vl",
   "...1s...done (3s)",
   "...1s...done (3s)",
-  "health: {\"ok\": true, \"bot\": true, \"lines\": {\"tonics\": 6, \"cordials\": 5}, \"stock\": 147, \"errors\": [], \"updated\": \"22.11.2026 14:00\"}",
-  "как браузер: 200 1.128732s 83688b; CORS: Access-Control-Allow-Origin: *; botReady: True",
-  "сеть из облака: {\"ok\": true, \"net\": {\"https://api.telegram.org\": \"FAIL <urlopen error timed out> 10.1s\", \"https://ya.ru\": \"ok 0.2s\", \"https://script.google.com\": \"ok 1.1s\"}}"
+  "health: {\"ok\": true, \"bot\": true, \"lines\": {\"tonics\": 6, \"cordials\": 5}, \"stock\": 147, \"errors\": [], \"updated\": \"22.11.2026 14:46\"}",
+  "как браузер: 502 30.397740s 51b; CORS: Access-Control-Allow-Origin: *; botReady: None",
+  "сеть из облака: {\"ok\": true, \"net\": {\"https://api.telegram.org\": \"FAIL <urlopen error timed out> 10.0s\", \"https://ya.ru\": \"ok 0.2s\", \"https://script.google.com\": \"ok 2.5s\"}}"
  ],
  "url": "https://functions.yandexcloud.net/d4emu18dclf7ij3lgve1",
  "health": {
@@ -39,6 +39,6 @@
   },
   "stock": 147,
   "errors": [],
-  "updated": "22.11.2026 14:00"
+  "updated": "22.11.2026 14:46"
  }
 }
