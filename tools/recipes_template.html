@@ -453,7 +453,7 @@ select.inp { appearance: auto; }
   function whs() { return (D && D.warehouses) || []; }
   function curWh() { return whs().indexOf(WH) >= 0 ? WH : ''; }
   function stockG(n) { var st = stockOf(n.name); if (!st) return null; var w = curWh(); var q = w && st.wh ? (st.wh[w] || 0) : st.qty; return q * fac(st.unit, n.dens); }
-  function whShort(w) { return w.replace(/\s*склад\s*/i, '').trim() || w; }
+  function whShort(w) { return w.replace(/\s*\(.*\)\s*$/, '').replace(/\s*склад\s*/i, '').trim() || w; }
   function whSplit(name, unit, dens) {
     var st = stockOf(name); if (!st || !st.wh || whs().length < 2) return null;
     return el('span', { cls: 'cm', text: whs().map(function (w) { return whShort(w) + ' ' + show((st.wh[w] || 0) * fac(st.unit, dens), unit, dens); }).join(' · ') });
@@ -474,7 +474,7 @@ select.inp { appearance: auto; }
       }));
     }
     return el('div', { cls: 'banner' + (D.stockTest ? ' test' : '') }, [
-      el('span', {}, ['Остатки на ', el('b', { text: D.stockDate || '—' }), curWh() ? ' · считаю по складу «' + curWh() + '»' : (whs().length > 1 ? ' · все склады' : '')]),
+      el('span', {}, ['Остатки на ', el('b', { text: D.stockDate || '—' }), curWh() ? ' · считаю по складу «' + whShort(curWh()) + '»' : (whs().length > 1 ? ' · все склады' : '')]),
       D.stockTest ? el('b', { text: 'ТЕСТОВЫЕ ЦИФРЫ — замените в таблице «Нунчи склад — остатки»' }) : null, sel]);
   }
 

@@ -145,7 +145,24 @@ def parse_report(values):
 PROP_HDR = ["Группа", "СВ, %", "Кисл., %", "Плотность, кг/л"]
 
 
-def build_stock_rows(whs, items, current, refs=None):
+LINK_HDR = ["Сырьё из рецептов — нет на складе", "В каких рецептах", "Код 1С (впиши, напр. НФ-00000198)"]
+
+
+def read_links(values):
+    """Ручные связи из блока «нет на складе»: код 1С или название 1С → [названия из рецептов]."""
+    links = {}
+    try:
+        h = next(i for i, r in enumerate(values) if r and str(r[0]).strip().startswith("Сырьё"))
+        c = next(j for j, x in enumerate(values[h]) if str(x).strip() == LINK_HDR[0])
+    except StopIteration:
+        return links
+    for r in values[h + 1:]:
+        if len(r) > c + 2 and str(r[c]).strip() and str(r[c + 2]).strip():
+            links.setdefault(norm(r[c + 2]).upper(), []).append(norm(r[c]))
+    return links
+
+
+def build_stock_rows(whs, items, current, refs=None, links=None):
     """current: имя → {unit, alias, code, note, props} из текущей таблицы склада (правки пользователя сохраняем).
     refs: справочники ТТК (имя → свойства) — для позиций, уже используемых в рецептах."""
     refs = refs or {}
@@ -170,6 +187,9 @@ def build_stock_rows(whs, items, current, refs=None):
         unit = c.get("unit") or raw_unit(it["name"])
         auto = ALIASES.get(it["name"]) or renamed(it["name"], ALIASES) or []
         alias = c.get("alias") if c.get("alias") is not None and c.get("alias") != "" else "; ".join(auto)
+        extra = (links or {}).get(str(it.get("code") or "").upper(), []) + (links or {}).get(it["name"].upper(), [])
+        have = [a.strip() for a in str(alias).split(";") if a.strip()]
+        alias = "; ".join(have + [a for a in extra if a not in have])
         note = c.get("note") if c else "ед. проверить"
         pr = c.get("props")
         if not pr or pr.get("group") in (None, ""):
@@ -215,26 +235,47 @@ def run(bridge, stock_id, force=False, ttk_ids=()):
     if not src:
         return {"ok": True, "imported": False, "reason": "в папке склада нет отчёта 1С (таблица с колонками «Номенклатура» и «Остаток»)"}
     f, rep = src
-    stamp = "%s|%s|v3" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
+    stamp = "%s|%s|v4" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
     marker = str(stock_vals[1][4]).strip() if len(stock_vals) > 1 and len(stock_vals[1]) > 4 else ""
-    if marker == stamp and not force:
+    if marker == stamp and not force and not read_links(stock_vals):
         return {"ok": True, "imported": False, "reason": "этот отчёт уже загружен", "source": f["name"]}
     whs, items = parse_report(rep["values"])
-    refs = {}
+    refs, used = {}, {}
     try:
         from parsers import parse_ttk
         for r in bridge([{"action": "read", "id": i} for i in ttk_ids]) if ttk_ids else []:
-            for n, v in parse_ttk(r["values"])["ref"].items():
+            t = parse_ttk(r["values"])
+            for n, v in t["ref"].items():
                 refs.setdefault(n, v)
+            for rec in t["tonics"]:
+                for ing in rec["items"]:
+                    if not ing.get("auto") and ing["name"]:
+                        used.setdefault(ing["name"], []).append(rec["name"])
     except Exception:
-        refs = {}
-    hdr, rows = build_stock_rows(whs, items, read_current(stock_vals), refs)
-    width = len(hdr)
+        refs, used = {}, {}
+    links = read_links(stock_vals)
+    hdr, rows = build_stock_rows(whs, items, read_current(stock_vals), refs, links)
+    ulow = {n.lower(): n for n in used}
+    for r in rows:  # «Сок Манго» в 1С = «Сок манго» в рецепте: дописываем точное написание из рецепта
+        n = ulow.get(r[0].lower())
+        have = [a.strip() for a in str(r[5]).split(";") if a.strip()]
+        if n and n != r[0] and n not in have:
+            r[5] = "; ".join(have + [n])
+    known = {r[0].lower() for r in rows} | {a.strip().lower() for r in rows for a in str(r[5]).split(";") if a.strip()}
+    miss = sorted((n for n in used if n.lower() not in known and (refs.get(n, {}).get("group") or "") != "Вода"), key=str.lower)
+    hdr = hdr + [""] + LINK_HDR
+    rows = [r + [""] * 4 for r in rows]
+    for k, n in enumerate(miss):
+        if k >= len(rows):
+            rows.append([""] * len(hdr))
+        rows[k][-4:] = ["", n, ", ".join(sorted(set(used[n]))), ""]
+    width = max(len(hdr), max((len(r) for r in stock_vals), default=0))
+    hdr = hdr + [""] * (width - len(hdr))
     mod = datetime.datetime.fromisoformat(f["modified"].replace("Z", "+00:00")).astimezone(MSK)
     old_n = max(len(stock_vals), 5)
     body = [hdr] + rows + [[""] * width for _ in range(max(0, old_n - 4 - len(rows)) + 5)]
     body = [r + [""] * (width - len(r)) for r in body]
-    col = chr(ord("A") + width - 1)
+    col = (chr(ord("A") + (width - 1) // 26 - 1) if width > 26 else "") + chr(ord("A") + (width - 1) % 26)
     ops = [
         {"action": "write", "id": stock_id, "range": "A1:E2", "values": [
             ["Нунчи — остатки сырья на складе (из 1С)", "", "", "", ""],
@@ -242,5 +283,6 @@ def run(bridge, stock_id, force=False, ttk_ids=()):
         {"action": "write", "id": stock_id, "range": "A4:%s%d" % (col, 3 + len(body)), "values": body},
     ]
     bridge(ops, timeout=50)
-    matched = sum(1 for r in rows if r[5])
-    return {"ok": True, "imported": True, "source": f["name"], "items": len(rows), "with_alias": matched, "warehouses": whs}
+    real = [r for r in rows if r[0]]
+    return {"ok": True, "imported": True, "source": f["name"], "items": len(real), "with_alias": sum(1 for r in real if r[5]),
+            "warehouses": whs, "unlinked": len(miss)}
