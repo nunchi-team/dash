@@ -35,7 +35,7 @@ ALIASES = {
     "Ботаникал Персика Цветы": ["Цветы персика"], "Ботаникал Жасмина Цветы": ["Цветы жасмина"], "Ботаникал Зизифора трава": ["Зизифора"],
     "Ботаникал Шалфей": ["Шалфей"], "Ботаникал Подсолнух лепестки": ["Подсолнух"], "Мирт Австралийский": ["Лимонный мирт"],
     "Ботаникал Куркума": ["Куркума сухой экстракт"],
-    "Сок  Береза": ["Сок березовый"], "Сок Лайм": ["Сок лайма"], "Сок Яблоко": ["Конц. яблоко"], "Сок Грейпфрут Баринофф": ["Конц. грейпфрут"],
+    "Сок  Береза": ["Сок березовый"], "Сок натуральный березовый": ["Сок березовый"], "Сок Лайм": ["Сок лайма"], "Сок Яблоко": ["Конц. яблоко"], "Сок Грейпфрут Баринофф": ["Конц. грейпфрут"],
     "Сок Брусники": ["Конц. брусника"], "Сок Груша": ["Конц. груша"], "Сок Клюква": ["Конц. клюква Меркурий", "Конц. клюква Инкос"],
     "Гуммиарабик (Е414)": ["Гуммиарабик"],
 }
@@ -151,10 +151,25 @@ def build_stock_rows(whs, items, current, refs=None):
     refs = refs or {}
     hdr = ["Сырьё (как в 1С)", "Остаток", "Ед.", "Код 1С", "Комментарий", "Название в рецептах"] + PROP_HDR + ["Склад: " + w for w in whs]
     rows = []
+    names = {it["name"] for it in items}
+    bycode = {str(v.get("code")).strip(): v for v in current.values() if str(v.get("code") or "").strip()}
+
+    def renamed(name, table):
+        """1С переименовали позицию («Ароматизатор Полынь» → «Ароматизатор Полынь Тарасов»):
+        берём самое длинное старое название, с которого начинается новое, если старого в отчёте больше нет."""
+        low = name.lower()
+        keys = [k for k in table if k not in names and low.startswith(k.lower() + " ")]
+        return table[max(keys, key=len)] if keys else None
+
     for it in sorted(items, key=lambda x: x["name"].lower()):
-        c = current.get(it["name"], {})
+        c = current.get(it["name"]) or bycode.get(it.get("code") or "") or {}
+        if not c.get("alias"):
+            old = renamed(it["name"], {k: v for k, v in current.items() if v.get("alias")})
+            if old:
+                c = dict(c or old, alias=old["alias"])
         unit = c.get("unit") or raw_unit(it["name"])
-        alias = c.get("alias") if c.get("alias") is not None and c.get("alias") != "" else "; ".join(ALIASES.get(it["name"], []))
+        auto = ALIASES.get(it["name"]) or renamed(it["name"], ALIASES) or []
+        alias = c.get("alias") if c.get("alias") is not None and c.get("alias") != "" else "; ".join(auto)
         note = c.get("note") if c else "ед. проверить"
         pr = c.get("props")
         if not pr or pr.get("group") in (None, ""):
@@ -200,7 +215,7 @@ def run(bridge, stock_id, force=False, ttk_ids=()):
     if not src:
         return {"ok": True, "imported": False, "reason": "в папке склада нет отчёта 1С (таблица с колонками «Номенклатура» и «Остаток»)"}
     f, rep = src
-    stamp = "%s|%s|v2" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
+    stamp = "%s|%s|v3" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
     marker = str(stock_vals[1][4]).strip() if len(stock_vals) > 1 and len(stock_vals[1]) > 4 else ""
     if marker == stamp and not force:
         return {"ok": True, "imported": False, "reason": "этот отчёт уже загружен", "source": f["name"]}
