@@ -174,6 +174,8 @@ function parseHtmlRows(html) {
         .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
       if (!cells.length) { var k = /class\s*=\s*"?([\w-]+)/i.exec(attrs); cls = k ? k[1] : ''; }
       cells.push(text);
+      var span = /colspan\s*=\s*"?(\d+)/i.exec(attrs);
+      for (var x = 1; span && x < +span[1]; x++) cells.push('');
     }
     rows.push({ cls: cls, cells: cells });
   }
@@ -185,8 +187,20 @@ function num1c(s) { s = String(s || '').replace(/[\s\u00a0]/g, '').replace(',', 
 /** Отчёт «по местам хранения» (склады блоками) → таблица как у отчёта 1С по складам колонками. */
 function reportToTable(rows) {
   var start = -1;
-  for (var i = 0; i < rows.length; i++) if (rows[i].cells[0] === 'Номенклатура') { start = i + 1; break; }
+  for (var i = 0; i < rows.length; i++) if (/^Номенклатура/.test(rows[i].cells[0] || '')) { start = i + 1; break; }
   if (start < 0) throw new Error('не нашёл строку «Номенклатура»');
+  // Вариант «склады колонками» (Основной / Тихвин рядом): отдаём как есть, робот сам разберёт.
+  var hdr = rows[start - 1].cells;
+  if (hdr.filter(function (c) { return c === 'Остаток'; }).length > 1) {
+    var tbl = [start > 1 ? rows[start - 2].cells : [], hdr];
+    for (var q = start; q < rows.length; q++) {
+      var c0 = rows[q].cells[0];
+      if (!c0) continue;
+      if (/^итого/i.test(c0)) break;
+      tbl.push(rows[q].cells.map(function (v, k) { return k === 0 ? v : (v === '' ? '' : num1c(v)); }));
+    }
+    return tbl;
+  }
   var groupCls = rows[start].cls, whs = [], items = {}, order = [], wh = null;
   for (var j = start; j < rows.length; j++) {
     var r = rows[j], name = r.cells[0];
@@ -216,7 +230,8 @@ function writeMailSheet(table, date) {
     DriveApp.getFileById(ss.getId()).moveTo(DriveApp.getFolderById(STOCK_FOLDER_ID));
     props.setProperty('MAIL_SHEET_ID', ss.getId());
   }
-  var sh = ss.getSheets()[0], w = table[0].length;
+  var sh = ss.getSheets()[0], w = Math.max.apply(null, table.map(function (r) { return r.length; }));
+  table = table.map(function (r) { return r.slice(); });
   sh.clear();
   sh.getRange(1, 1, table.length, w).setValues(table.map(function (r) { while (r.length < w) r.push(''); return r; }));
   sh.getRange(1, 1, 2, w).setFontWeight('bold');

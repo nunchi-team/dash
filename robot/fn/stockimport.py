@@ -6,6 +6,7 @@
 Единицы и связь с названиями в рецептах, которые пользователь поправил в таблице склада, сохраняются при следующих загрузках.
 """
 import datetime
+import re
 
 MSK = datetime.timezone(datetime.timedelta(hours=3))
 STOCK_NAME = "Нунчи склад — остатки"
@@ -85,9 +86,19 @@ def _num(v):
         return None
 
 
+CODE_RE = re.compile(r"^(.*?),\s*([A-Za-zА-Яа-яЁё]{1,4}-?\d{3,})$")
+
+
+def split_code(cell):
+    """«Кислота Лимонная 1кг, НФ-00000002» → («Кислота Лимонная 1кг», «НФ-00000002»)."""
+    n = norm(cell)
+    m = CODE_RE.match(n)
+    return (m.group(1).strip(), m.group(2)) if m else (n, "")
+
+
 def is_report(values):
     head = [str(c).strip() for r in values[:6] for c in r]
-    return "Номенклатура" in head and "Остаток" in head
+    return any(h.startswith("Номенклатура") for h in head) and "Остаток" in head
 
 
 def raw_unit(name):
@@ -100,7 +111,7 @@ def raw_unit(name):
 
 def parse_report(values):
     """→ (склады, позиции[{name, qty, free, wh:{склад: qty}}])"""
-    hdr = next(i for i, r in enumerate(values[:10]) if r and str(r[0]).strip() == "Номенклатура")
+    hdr = next(i for i, r in enumerate(values[:10]) if r and str(r[0]).strip().startswith("Номенклатура"))
     top = values[hdr - 1] if hdr > 0 else []
     sub = values[hdr]
     groups, cur = [], None  # (название склада, колонка «Остаток», колонка «Свободно»)
@@ -122,11 +133,11 @@ def parse_report(values):
     for r in values[hdr + 1:]:
         if not r or not str(r[0]).strip():
             continue
-        name = norm(r[0])
+        name, code = split_code(r[0])
         if name.lower().startswith("итого") or raw_unit(name) is None:
             continue
         get = lambda j: _num(r[j]) if j is not None and j < len(r) else None
-        items.append(dict(name=name, qty=get(total["rest"]) or 0.0, free=get(total["free"]),
+        items.append(dict(name=name, code=code, qty=get(total["rest"]) or 0.0, free=get(total["free"]),
                           wh={g["name"]: get(g["rest"]) or 0.0 for g in whs}))
     return [g["name"] for g in whs], items
 
@@ -151,7 +162,7 @@ def build_stock_rows(whs, items, current, refs=None):
             pr = dict(known) if known else default_props(it["name"])
             if not known and pr.get("note"):
                 note = "; ".join(x for x in [note, pr["note"]] if x)
-        rows.append([it["name"], it["qty"], unit, c.get("code", ""), note or "", alias,
+        rows.append([it["name"], it["qty"], unit, it.get("code") or c.get("code", ""), note or "", alias,
                      pr.get("group", ""), pr.get("ss", 0), pr.get("acid", 0), pr.get("density", 1)] + [it["wh"].get(w, 0) for w in whs])
     return hdr, rows
 
