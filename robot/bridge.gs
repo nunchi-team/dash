@@ -127,7 +127,7 @@ function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setM
 
 
 /* ================= Рассылка 1С УНФ → таблица на Диске ================= */
-var MAIL_QUERY = 'from:nunchidrink@mail.ru subject:"Склад отчет" has:attachment newer_than:10d';
+var MAIL_QUERY = 'from:nunchidrink@mail.ru {subject:"Склад отчет" subject:"Склад для робота"} has:attachment newer_than:10d';
 var STOCK_FOLDER_ID = '1y2O1RH5ut4Dvs6VpINEjyutiSWveFpGH';  // «Нунчи склад остатки»
 var MAIL_SHEET_NAME = 'Остатки 1С — из почты';
 
