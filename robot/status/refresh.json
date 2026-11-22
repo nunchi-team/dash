@@ -1,5 +1,5 @@
 {
- "checked": "22.11.2026 14:46",
+ "checked": "22.11.2026 15:03",
  "ok": true,
  "changed": true,
  "stock_import": {
@@ -7,7 +7,7 @@
   "imported": true,
   "source": "Остатки 1С — из почты",
   "items": 152,
-  "with_alias": 33,
+  "with_alias": 50,
   "warehouses": [
    "Основной склад",
    "Тихвин (Склад Юг)"
@@ -17,7 +17,7 @@
   "tonics": 6,
   "cordials": 5
  },
- "stock": 185,
+ "stock": 201,
  "errors": [],
- "updated": "22.11.2026 14:47"
+ "updated": "22.11.2026 15:03"
 }
