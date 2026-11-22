@@ -1,18 +1,12 @@
 {
- "checked": "22.11.2026 22:21",
+ "checked": "22.11.2026 23:12",
  "ok": true,
  "changed": false,
  "stock_import": {
   "ok": true,
-  "imported": true,
-  "source": "Остатки 1С — из почты",
-  "items": 152,
-  "with_alias": 50,
-  "warehouses": [
-   "Основной склад",
-   "Тихвин (Склад Юг)"
-  ],
-  "unlinked": 10
+  "imported": false,
+  "reason": "этот отчёт уже загружен",
+  "source": "Остатки 1С — из почты"
  },
  "lines": {
   "tonics": 6,
