@@ -4,6 +4,8 @@
  * Умеет: прочитать лист таблицы, записать значения в диапазон, добавить строки,
  * передать сообщение в Telegram (из облака Яндекса Telegram недоступен).
  * Версия 3: ещё отдаёт любой файл папки (Excel, PDF) — для загрузки остатков из 1С.
+ * Версия 4: раз в час забирает из почты рассылку 1С УНФ «Склад отчет» и кладёт остатки таблицей в папку склада.
+ *   Один раз запустить setupMail — включит автопроверку почты.
  * Работает только с файлами из папки «claude рецепты нунчи» и только по секретному ключу.
  */
 var ROOT_FOLDER_ID = '1phFTtDIWs5LSYHuYxu1Y2ZG-_nHhZ8b3';
@@ -122,3 +124,102 @@ function listFiles() {
 }
 
 function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+
+
+/* ================= Рассылка 1С УНФ → таблица на Диске ================= */
+var MAIL_QUERY = 'from:nunchidrink@mail.ru subject:"Склад отчет" has:attachment newer_than:10d';
+var STOCK_FOLDER_ID = '1y2O1RH5ut4Dvs6VpINEjyutiSWveFpGH';  // «Нунчи склад остатки»
+var MAIL_SHEET_NAME = 'Остатки 1С — из почты';
+
+/** Запустить один раз вручную: включает проверку почты каждый час и сразу забирает последний отчёт. */
+function setupMail() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'importMail') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('importMail').timeBased().everyHours(1).create();
+  PropertiesService.getScriptProperties().deleteProperty('MAIL_LAST');
+  Logger.log(importMail());
+}
+
+/** Забирает самое свежее письмо с отчётом остатков и обновляет таблицу «Остатки 1С — из почты». */
+function importMail() {
+  var props = PropertiesService.getScriptProperties();
+  var threads = GmailApp.search(MAIL_QUERY, 0, 10), newest = null;
+  threads.forEach(function (th) { th.getMessages().forEach(function (m) {
+    if (!newest || m.getDate() > newest.getDate()) newest = m; }); });
+  if (!newest) return 'писем с отчётом нет';
+  if (props.getProperty('MAIL_LAST') === newest.getId()) return 'новых отчётов нет';
+  var html = null;
+  newest.getAttachments().forEach(function (a) {
+    var name = a.getName().toLowerCase();
+    var blobs = name.slice(-4) === '.zip' ? Utilities.unzip(a.copyBlob().setContentType('application/zip')) : [a.copyBlob()];
+    blobs.forEach(function (b) { if (!html && /\.html?$/i.test(b.getName() || name)) html = b.getDataAsString('UTF-8'); });
+  });
+  if (!html) return 'в письме нет HTML-отчёта';
+  var table = reportToTable(parseHtmlRows(html));
+  if (table.length < 3) return 'отчёт пустой';
+  writeMailSheet(table, newest.getDate());
+  props.setProperty('MAIL_LAST', newest.getId());
+  return 'загружено: ' + (table.length - 2) + ' позиций, письмо от ' + newest.getDate();
+}
+
+/** HTML-таблица 1С → строки [{cls, cells:[...]}] */
+function parseHtmlRows(html) {
+  html = html.replace(/^\uFEFF/, '');
+  var rows = [], trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi, tdRe = /<td([^>]*)>([\s\S]*?)<\/td>/gi, m, c;
+  while ((m = trRe.exec(html))) {
+    var cells = [], cls = '';
+    tdRe.lastIndex = 0;
+    while ((c = tdRe.exec(m[1]))) {
+      var attrs = c[1], text = c[2].replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;|&#160;/gi, ' ').replace(/&quot;/g, '"').replace(/&laquo;/g, '«').replace(/&raquo;/g, '»')
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+      if (!cells.length) { var k = /class\s*=\s*"?([\w-]+)/i.exec(attrs); cls = k ? k[1] : ''; }
+      cells.push(text);
+    }
+    rows.push({ cls: cls, cells: cells });
+  }
+  return rows;
+}
+
+function num1c(s) { s = String(s || '').replace(/[\s\u00a0]/g, '').replace(',', '.'); var v = parseFloat(s); return isNaN(v) ? 0 : v; }
+
+/** Отчёт «по местам хранения» (склады блоками) → таблица как у отчёта 1С по складам колонками. */
+function reportToTable(rows) {
+  var start = -1;
+  for (var i = 0; i < rows.length; i++) if (rows[i].cells[0] === 'Номенклатура') { start = i + 1; break; }
+  if (start < 0) throw new Error('не нашёл строку «Номенклатура»');
+  var groupCls = rows[start].cls, whs = [], items = {}, order = [], wh = null;
+  for (var j = start; j < rows.length; j++) {
+    var r = rows[j], name = r.cells[0];
+    if (!name) continue;
+    if (/^итого/i.test(name)) break;
+    if (r.cls === groupCls) { wh = name; if (whs.indexOf(wh) < 0) whs.push(wh); continue; }
+    if (!items[name]) { items[name] = {}; order.push(name); }
+    var it = items[name][wh] || (items[name][wh] = { q: 0, f: 0 });
+    it.q += num1c(r.cells[1]); it.f += num1c(r.cells[3]);
+  }
+  var top = ['Организация', 'Итого по всем складам', '', ''], sub = ['Номенклатура', 'Остаток', 'Резерв', 'Свободно'];
+  whs.forEach(function (w) { top.push(w, '', ''); sub.push('Остаток', 'Резерв', 'Свободно'); });
+  var out = [top, sub];
+  order.sort(function (a, b) { return a.localeCompare(b, 'ru'); }).forEach(function (n) {
+    var q = 0, f = 0, row = [n, 0, '', 0];
+    whs.forEach(function (w) { var x = items[n][w]; row.push(x ? x.q : '', '', x ? x.f : ''); if (x) { q += x.q; f += x.f; } });
+    row[1] = q; row[3] = f; out.push(row);
+  });
+  return out;
+}
+
+function writeMailSheet(table, date) {
+  var props = PropertiesService.getScriptProperties(), id = props.getProperty('MAIL_SHEET_ID'), ss = null;
+  if (id) { try { ss = SpreadsheetApp.openById(id); if (DriveApp.getFileById(id).isTrashed()) ss = null; } catch (e) { ss = null; } }
+  if (!ss) {
+    ss = SpreadsheetApp.create(MAIL_SHEET_NAME);
+    DriveApp.getFileById(ss.getId()).moveTo(DriveApp.getFolderById(STOCK_FOLDER_ID));
+    props.setProperty('MAIL_SHEET_ID', ss.getId());
+  }
+  var sh = ss.getSheets()[0], w = table[0].length;
+  sh.clear();
+  sh.getRange(1, 1, table.length, w).setValues(table.map(function (r) { while (r.length < w) r.push(''); return r; }));
+  sh.getRange(1, 1, 2, w).setFontWeight('bold');
+  sh.setFrozenRows(2);
+  ss.rename(MAIL_SHEET_NAME);
+}

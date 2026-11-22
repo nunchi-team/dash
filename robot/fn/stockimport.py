@@ -66,6 +66,14 @@ def default_props(name):
     return dict(group="Прочее", ss=0, acid=0, density=1, note="")
 
 
+def norm(name):
+    """Название без лишних пробелов (в HTML-рассылке 1С двойные пробелы схлопываются)."""
+    return " ".join(str(name or "").split())
+
+
+ALIASES = {norm(k): v for k, v in ALIASES.items()}
+
+
 def _num(v):
     if v is None or v == "":
         return None
@@ -114,7 +122,7 @@ def parse_report(values):
     for r in values[hdr + 1:]:
         if not r or not str(r[0]).strip():
             continue
-        name = str(r[0]).strip()
+        name = norm(r[0])
         if name.lower().startswith("итого") or raw_unit(name) is None:
             continue
         get = lambda j: _num(r[j]) if j is not None and j < len(r) else None
@@ -165,7 +173,7 @@ def read_current(values):
                  alias=(r[5] if hasalias and len(r) > 5 else None))
         if hasprops and str(r[6]).strip():
             e["props"] = dict(group=str(r[6]).strip(), ss=_num(r[7]) or 0, acid=_num(r[8]) or 0, density=_num(r[9]) or 1)
-        cur[str(r[0]).strip()] = e
+        cur[norm(r[0])] = e
     return cur
 
 
