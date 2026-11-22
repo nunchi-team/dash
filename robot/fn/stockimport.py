@@ -89,6 +89,9 @@ def _num(v):
 CODE_RE = re.compile(r"^(.*?),\s*([A-Za-zА-Яа-яЁё]{1,4}-?\d{3,})$")
 
 
+ONLY_CODE_RE = re.compile(r"^[A-Za-zА-Яа-яЁё]{1,4}-?\d{3,}$")
+
+
 def split_code(cell):
     """«Кислота Лимонная 1кг, НФ-00000002» → («Кислота Лимонная 1кг», «НФ-00000002»)."""
     n = norm(cell)
@@ -129,11 +132,16 @@ def parse_report(values):
             cur["free"] = j
     total = next((g for g in groups if g["name"].lower().startswith("итого")), groups[0] if groups else None)
     whs = [g for g in groups if g is not total]
-    items = []
+    items, pend = [], ""
     for r in values[hdr + 1:]:
         if not r or not str(r[0]).strip():
             continue
+        c0 = norm(r[0])
+        if ONLY_CODE_RE.match(c0):  # вид «код строкой выше, название под ним»
+            pend = c0
+            continue
         name, code = split_code(r[0])
+        code, pend = code or pend, ""
         if name.lower().startswith("итого") or raw_unit(name) is None:
             continue
         get = lambda j: _num(r[j]) if j is not None and j < len(r) else None
