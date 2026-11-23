@@ -72,9 +72,15 @@ def parse_stock(rows):
         if has_alias:
             for a in str(cell(k, 5) or "").split(";"):
                 a = a.strip()
-                if a: aliases[a] = n
-    for a, n in aliases.items():  # название из рецепта → та же позиция склада
-        if a not in stock:
-            stock[a] = dict(stock[n], src=n)
+                if a: aliases.setdefault(a, []).append(n)
+    for a, ns in aliases.items():  # название из рецепта → позиция(и) склада; несколько поставщиков — складываем
+        if a in stock:
+            continue
+        e = dict(stock[ns[0]], src=" + ".join(ns))
+        if len(ns) > 1:
+            e["qty"] = sum(stock[n]["qty"] for n in ns)
+            if "wh" in e:
+                e["wh"] = {w: sum(stock[n].get("wh", {}).get(w, 0) for n in ns) for w in e["wh"]}
+        stock[a] = e
     return dict(stock=stock, stockDate=str(date or ""), stockTest=test,
                 stockSource=str(cell(1, 3) or "") if has_alias else "", warehouses=[w for _, w in whcols])

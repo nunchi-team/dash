@@ -15,7 +15,7 @@ RAW = [  # (начало названия в 1С, единица по умолч
     ("Ароматизатор", "г"), ("Ботаникал", "г"), ("Экстракт", "г"), ("Кислота Лимонная", "кг"), ("Кислота", "г"),
     ("Сахароза", "кг"), ("Сахар", "кг"), ("Сироп", "л"), ("Сок", "кг"), ("Пюре", "кг"), ("Концентрат", "кг"),
     ("Сорбат", "г"), ("Бензоат", "г"), ("Ксантан", "г"), ("Гуммиарабик", "кг"), ("Краситель", "г"),
-    ("Мирт", "г"), ("Мята", "г"), ("Тонка", "г"), ("Листья", "г"), ("Микс трав", "г"), ("Соль", "кг"), ("Эмульсия", "г"),
+    ("Мирт", "г"), ("Мята", "г"), ("Тонка", "г"), ("Листья", "г"), ("Микс трав", "г"), ("Соль", "кг"), ("Эмульсия", "г"), ("Нейтральная эмульсия", "г"),
 ]
 
 # названия в рецептах → название в 1С (первичная привязка; дальше её можно править в колонке «Название в рецептах»)
@@ -73,6 +73,17 @@ def norm(name):
 
 
 ALIASES = {norm(k): v for k, v in ALIASES.items()}
+
+# Точная связь по коду 1С (не ломается при переименовании). Одно название рецепта на несколько кодов —
+# это одно сырьё от разных поставщиков: остатки складываются.
+CODE_ALIASES = {
+    "НФ-00000095": ["Аромка клюква"], "НФ-00000457": ["Аромка клюква Кима"],
+    "НФ-00000110": ["Конц. клюква Меркурий"], "НФ-00000445": ["Конц. клюква Инкос"],
+    "НФ-00000155": ["Конц. брусника"], "НФ-00000444": ["Конц. брусника"],
+    "НФ-00000452": ["Аромка терпкость"], "НФ-00000454": ["Нейтральная эмульсия"],
+    "НФ-00000443": ["Аромка облепиха"], "НФ-00000438": ["Конц. облепиха"],
+}
+CLAIMED = {a: {c for c, v in CODE_ALIASES.items() if a in v} for v in CODE_ALIASES.values() for a in v}
 
 
 def _num(v):
@@ -184,7 +195,12 @@ def build_stock_rows(whs, items, current, refs=None, links=None):
         берём самое длинное старое название, с которого начинается новое, если старого в отчёте больше нет."""
         low = name.lower()
         keys = [k for k in table if k not in names and low.startswith(k.lower() + " ")]
-        return table[max(keys, key=len)] if keys else None
+        if not keys:
+            return None
+        k = max(keys, key=len)
+        if sum(1 for n in names if n.lower().startswith(k.lower() + " ")) > 1:
+            return None  # «Ароматизатор Клюква» → Делер и Кима: не угадываем
+        return table[k]
 
     for it in sorted(items, key=lambda x: x["name"].lower()):
         c = current.get(it["name"]) or bycode.get(it.get("code") or "") or {}
@@ -196,7 +212,10 @@ def build_stock_rows(whs, items, current, refs=None, links=None):
         auto = ALIASES.get(it["name"]) or renamed(it["name"], ALIASES) or []
         alias = c.get("alias") if c.get("alias") is not None and c.get("alias") != "" else "; ".join(auto)
         extra = (links or {}).get(str(it.get("code") or "").upper(), []) + (links or {}).get(it["name"].upper(), [])
+        code = str(it.get("code") or "").upper()
+        extra = CODE_ALIASES.get(code, []) + extra
         have = [a.strip() for a in str(alias).split(";") if a.strip()]
+        have = [a for a in have if a not in CLAIMED or code in CLAIMED[a]]  # название закреплено за другим кодом
         alias = "; ".join(have + [a for a in extra if a not in have])
         note = c.get("note") if c else "ед. проверить"
         pr = c.get("props")
@@ -243,7 +262,7 @@ def run(bridge, stock_id, force=False, ttk_ids=()):
     if not src:
         return {"ok": True, "imported": False, "reason": "в папке склада нет отчёта 1С (таблица с колонками «Номенклатура» и «Остаток»)"}
     f, rep = src
-    stamp = "%s|%s|v4" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
+    stamp = "%s|%s|v5" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
     marker = str(stock_vals[1][4]).strip() if len(stock_vals) > 1 and len(stock_vals[1]) > 4 else ""
     if marker == stamp and not force and not read_links(stock_vals):
         return {"ok": True, "imported": False, "reason": "этот отчёт уже загружен", "source": f["name"]}
