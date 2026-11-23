@@ -1,10 +1,12 @@
 {
- "checked": "23.11.2026 19:50",
+ "checked": "23.11.2026 20:50",
  "ok": true,
  "changed": false,
  "stock_import": {
-  "ok": false,
-  "error": "The read operation timed out"
+  "ok": true,
+  "imported": false,
+  "reason": "этот отчёт уже загружен",
+  "source": "Остатки 1С — из почты"
  },
  "lines": {
   "tonics": 6,
