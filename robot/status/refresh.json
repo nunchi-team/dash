@@ -1,7 +1,7 @@
 {
- "checked": "23.11.2026 12:32",
+ "checked": "23.11.2026 12:48",
  "ok": true,
- "changed": true,
+ "changed": false,
  "stock_import": {
   "ok": true,
   "imported": true,
@@ -19,6 +19,5 @@
   "cordials": 5
  },
  "stock": 206,
- "errors": [],
- "updated": "23.11.2026 12:33"
+ "errors": []
 }
