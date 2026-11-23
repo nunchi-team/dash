@@ -82,6 +82,8 @@ CODE_ALIASES = {
     "НФ-00000155": ["Конц. брусника"], "НФ-00000444": ["Конц. брусника"],
     "НФ-00000452": ["Аромка терпкость"], "НФ-00000454": ["Нейтральная эмульсия"],
     "НФ-00000443": ["Аромка облепиха"], "НФ-00000438": ["Конц. облепиха"],
+    "НФ-00000453": ["Аромка крем-сода"], "НФ-00000458": ["Аромка крем-сода"],
+    "НФ-00000106": ["Имбирь сухой экстракт"],
 }
 CLAIMED = {a: {c for c, v in CODE_ALIASES.items() if a in v} for v in CODE_ALIASES.values() for a in v}
 
@@ -262,7 +264,7 @@ def run(bridge, stock_id, force=False, ttk_ids=()):
     if not src:
         return {"ok": True, "imported": False, "reason": "в папке склада нет отчёта 1С (таблица с колонками «Номенклатура» и «Остаток»)"}
     f, rep = src
-    stamp = "%s|%s|v5" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
+    stamp = "%s|%s|v6" % (f["id"], f["modified"])  # v2 — формат со свойствами сырья
     marker = str(stock_vals[1][4]).strip() if len(stock_vals) > 1 and len(stock_vals[1]) > 4 else ""
     if marker == stamp and not force and not read_links(stock_vals):
         return {"ok": True, "imported": False, "reason": "этот отчёт уже загружен", "source": f["name"]}
