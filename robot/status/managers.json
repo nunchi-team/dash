@@ -1,7 +1,7 @@
 {
  "ok": true,
  "step": "готово",
- "target": "test/index.html",
+ "target": "index.html",
  "orders_read": 7813,
  "clients_in_1c": 1295,
  "contract_clients_excluded": 0,
@@ -101,5 +101,5 @@
   "lost": 7,
   "came": 5
  },
- "at": "28.11.2026 00:19"
+ "at": "28.11.2026 00:24"
 }
