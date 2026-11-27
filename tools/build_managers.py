@@ -3,7 +3,7 @@
 
 Запуск из GitHub Actions каждые 3 часа (workflow «Страница менеджеров»).
 Секреты: ODATA_USER, ODATA_PASS, SITE_PASSWORD. Только чтение из 1С.
-Результат: зашифрованная страница (по умолчанию test/index.html) и статус robot/status/managers.json (без названий клиентов).
+Результат: зашифрованная страница (по умолчанию index.html) и статус robot/status/managers.json (без названий клиентов).
 Если что-то не так, старая страница остаётся как была.
 """
 import base64, collections, datetime as dt, json, os, re, sys, time, urllib.parse, urllib.request
@@ -12,7 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 ODATA = os.environ.get('ODATA_URL', 'https://1cfresh.com/a/sbm/2291054/odata/standard.odata/')
 SINCE = '2023-01-01'
-TARGET = os.environ.get('TARGET', 'test/index.html')
+TARGET = os.environ.get('TARGET', 'index.html')
 YEAR0 = dt.date(2025, 12, 29)          # первая неделя 2026 года (понедельник)
 CONTRACT_WORDS = ('ВКУСВИЛЛ', 'ВКУС ВИЛЛ', 'С-ИМПОРТС', 'С ИМПОРТС', 'СИМПОРТС', 'HOPPERS', 'ХОППЕРС', 'ХОПЕРС')  # контрактное производство
 BOSS = {'Аверин', 'Хаушабо'}            # → «Нунчи боссы»
