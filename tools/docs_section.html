@@ -83,10 +83,10 @@
 #docs .dc-muted{color:var(--color-fg-muted);font-size:13px}
 #docs .dc-l{display:block;font-size:12.5px;color:var(--color-fg-muted);margin:8px 0 4px}
 #docs input,#docs select{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--color-border-line);border-radius:10px;background:var(--color-bg);color:var(--color-fg)}
-#docs .dc-row{display:flex;gap:8px;align-items:stretch}#docs .dc-row input{flex:1 1 140px;width:auto;min-width:120px}
+#docs .dc-row{display:flex;gap:8px}#docs .dc-row input{flex:1;min-width:0}
 #docs .dc-btn{font:inherit;font-size:15px;padding:11px 16px;border-radius:10px;border:1px solid var(--color-border-line);background:var(--color-bg);color:var(--color-fg);cursor:pointer;margin-top:8px}
 #docs .dc-main{background:var(--color-fg);color:var(--color-bg);border-color:var(--color-fg)}
-#docs .dc-row .dc-btn{margin-top:0;flex:0 0 auto;width:auto;max-width:40%;white-space:nowrap}
+#docs .dc-row .dc-btn{margin-top:0}
 #docs .dc-btn[disabled]{opacity:.5}
 #docs .dc-link{background:none;border:0;padding:6px 0;font:inherit;font-size:14px;color:var(--color-fg-muted);text-decoration:underline;cursor:pointer}
 #docs .dc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
@@ -309,12 +309,14 @@
   // ---------- счета ----------
   function loadInv() {
     $('dc-inv-load').disabled = true; var id = S.client.id;
-    call('docs', { client: id }).then(function (r) {
+    Promise.all([call('docs', { client: id }), call('unpaid', { client: id, org: '' }).catch(function () { return null; })]).then(function (rr) {
+      var r = rr[0], up = rr[1], debt = {}, known = !!(up && up.docs);
+      if (known) up.docs.forEach(function (x) { debt[String(x.number).trim()] = x.debt; });
       if (S.client.id !== id) return; S.docs = r; show('dc-inv-load', false);
       var blk = function (title, kind, arr) {
         if (!arr.length) return '<div class="dc-sum"><b>' + title + '</b>: нет за 12 месяцев.</div>';
         return '<div class="dc-sum"><b>' + title + '</b></div>' + arr.map(function (d) {
-          return '<div class="dc-urow"><div>№ ' + esc(d.number) + ' от ' + dmy(d.date) + '<small>' + esc(d.org) + ' · ' + money(d.sum) + ' ₽</small></div><button class="dc-btn" type="button" data-kind="' + kind + '" data-did="' + esc(d.id) + '">PDF</button></div>';
+          return '<div class="dc-urow"><div>№ ' + esc(d.number) + ' от ' + dmy(d.date) + '<small>' + esc(d.org) + ' · ' + money(d.sum) + ' ₽' + (kind === 'upd' && known ? (debt[String(d.number).trim()] != null ? ' · <b style="color:#B4531A">долг ' + money(debt[String(d.number).trim()]) + ' ₽</b>' : ' · оплачен') : '') + '</small></div><button class="dc-btn" type="button" data-kind="' + kind + '" data-did="' + esc(d.id) + '">PDF</button></div>';
         }).join('');
       };
       $('dc-inv').innerHTML = blk('Счета на оплату', 'invoice', r.invoices || []) + blk('УПД', 'upd', r.upd || []);
