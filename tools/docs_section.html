@@ -249,7 +249,7 @@
     call('act', { client: id, from: from, to: to, org: S.org }).then(function (a) {
       if (S.client.id !== id) return;
       S.act = a; if (!S.org) S.org = a.org.id; fillOrgsAct(a.organizations);
-      var h = '<div class="dc-sum">Сальдо на ' + dmy(a.from) + ': <b>' + money(a.opening) + ' ₽</b></div><div class="dc-tw"><table><tr><th>Дата</th><th>Документ</th><th class="r">Дебет</th><th class="r">Кредит</th></tr>' +
+      var h = '<div class="dc-sum">Акт от организации: <b>' + esc(a.org.name || a.org.full) + '</b></div><div class="dc-sum">Сальдо на ' + dmy(a.from) + ': <b>' + money(a.opening) + ' ₽</b></div><div class="dc-tw"><table><tr><th>Дата</th><th>Документ</th><th class="r">Дебет</th><th class="r">Кредит</th></tr>' +
         a.lines.map(function (l) { return '<tr><td>' + dmy(l.date) + '</td><td>' + esc(l.doc) + '</td><td class="r">' + (l.debit ? money(l.debit) : '') + '</td><td class="r">' + (l.credit ? money(l.credit) : '') + '</td></tr>'; }).join('') +
         '<tr class="dc-tot"><td colspan="2">Обороты за период</td><td class="r">' + money(a.debit) + '</td><td class="r">' + money(a.credit) + '</td></tr></table></div>' +
         '<div class="dc-sum">Сальдо на ' + dmy(a.to) + ': <b>' + money(a.closing) + ' ₽</b><br>' + saldoText(a) + '</div>';
@@ -599,7 +599,7 @@
   $('dc-stamp').onchange = function () { var a = S.act; if (a) makeActions('dc-act-act', function () { return pdfAct(a); }, 'Акт_сверки_' + file(S.client.name) + '_' + a.from + '_' + a.to + '.pdf'); };
   $('dc-inv-load').onclick = loadInv;
   $('dc-inv').onclick = function (e) { var b = e.target.closest('[data-did]'); if (b) openDoc(b.getAttribute('data-kind'), b.getAttribute('data-did'), b); };
-  $('dc-org').onchange = function () { S.org = this.value; S.act = null; $('dc-act').innerHTML = ''; show('dc-act-act', false); loadUnpaid(); };
+  $('dc-org').onchange = function () { var had = !!S.act; S.org = this.value; S.act = null; $('dc-act').innerHTML = ''; show('dc-act-act', false); loadUnpaid(); if (had) makeAct(); };
 
 
   // ---------- администрирование ----------
