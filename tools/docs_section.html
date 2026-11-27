@@ -63,11 +63,12 @@
       <label class="dc-chk" id="dc-stamp-row" hidden><input type="checkbox" id="dc-stamp" checked> С печатью и подписью</label>
       <div class="dc-actions" id="dc-act-act" hidden></div>
 
-      <h4>Счета на оплату</h4>
-      <div class="dc-muted">За последние 6 месяцев.</div>
-      <button class="dc-btn" id="dc-inv-load" type="button">Показать счета</button>
+      <h4>Счета и УПД</h4>
+      <div class="dc-muted">За последние 12 месяцев. Нажмите на документ — получите PDF.</div>
+      <button class="dc-btn" id="dc-inv-load" type="button">Показать документы</button>
       <div id="dc-inv"></div>
-      <div class="dc-actions" id="dc-inv-act" hidden></div>
+      <div class="dc-sum" id="dc-doc-title" hidden></div>
+      <div class="dc-actions" id="dc-doc-act" hidden></div>
     </div>
   </div>
 </section>
@@ -188,7 +189,7 @@
     $('dc-cname').textContent = c.name;
     $('dc-cinfo').textContent = [c.inn ? 'ИНН ' + c.inn : '', S.all && c.manager ? 'менеджер: ' + c.manager : ''].filter(Boolean).join(' · ');
     $('dc-act').innerHTML = ''; show('dc-act-act', false); show('dc-stamp-row', false); setErr('dc-act-err', '');
-    $('dc-inv').innerHTML = ''; show('dc-inv-act', false); show('dc-inv-load', true);
+    $('dc-inv').innerHTML = ''; show('dc-doc-act', false); show('dc-doc-title', false); show('dc-inv-load', true);
     show('dc-orgrow', false);
     var to = new Date(), from = new Date(); from.setMonth(from.getMonth() - 3); from.setDate(from.getDate() + 1);
     $('dc-to').value = iso(to); $('dc-from').value = iso(from);
@@ -265,13 +266,26 @@
   // ---------- счета ----------
   function loadInv() {
     $('dc-inv-load').disabled = true; var id = S.client.id;
-    call('invoices', { client: id }).then(function (r) {
-      if (S.client.id !== id) return; S.inv = r.invoices; show('dc-inv-load', false);
-      if (!S.inv.length) { $('dc-inv').innerHTML = '<div class="dc-sum">Счетов за 6 месяцев нет.</div>'; return; }
-      $('dc-inv').innerHTML = '<div class="dc-tw"><table><tr><th>Счёт</th><th>Дата</th><th class="r">Сумма</th></tr>' +
-        S.inv.map(function (d) { return '<tr><td>№ ' + esc(d.number) + '</td><td>' + dmy(d.date) + '</td><td class="r">' + money(d.sum) + '</td></tr>'; }).join('') + '</table></div>';
-      makeActions('dc-inv-act', function () { return pdfInv(); }, 'Счета_' + file(S.client.name) + '.pdf');
+    call('docs', { client: id }).then(function (r) {
+      if (S.client.id !== id) return; S.docs = r; show('dc-inv-load', false);
+      var blk = function (title, kind, arr) {
+        if (!arr.length) return '<div class="dc-sum"><b>' + title + '</b>: нет за 12 месяцев.</div>';
+        return '<div class="dc-sum"><b>' + title + '</b></div>' + arr.map(function (d) {
+          return '<div class="dc-urow"><div>№ ' + esc(d.number) + ' от ' + dmy(d.date) + '<small>' + esc(d.org) + ' · ' + money(d.sum) + ' ₽</small></div><button class="dc-btn" type="button" data-kind="' + kind + '" data-did="' + esc(d.id) + '">PDF</button></div>';
+        }).join('');
+      };
+      $('dc-inv').innerHTML = blk('Счета на оплату', 'invoice', r.invoices || []) + blk('УПД', 'upd', r.upd || []);
     }).catch(function (e) { $('dc-inv').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; }).then(function () { $('dc-inv-load').disabled = false; });
+  }
+  function openDoc(kind, did, btn) {
+    var id = S.client.id; btn.disabled = true; var old = btn.textContent; btn.textContent = '…';
+    $('dc-doc-title').hidden = true; show('dc-doc-act', false);
+    call('print', { client: id, kind: kind, id: did }).then(function (p) {
+      if (S.client.id !== id) return;
+      $('dc-doc-title').textContent = (kind === 'invoice' ? 'Счёт № ' : 'УПД № ') + p.number + ' от ' + dmy(p.date); show('dc-doc-title', true);
+      makeActions('dc-doc-act', function () { return kind === 'invoice' ? pdfInvoice(p) : pdfUpd(p); }, (kind === 'invoice' ? 'Счет_' : 'УПД_') + file(p.number) + '_' + file(S.client.name) + '.pdf');
+      $('dc-doc-act').scrollIntoView({ block: 'nearest' });
+    }).catch(function (e) { $('dc-doc-title').textContent = e.message; show('dc-doc-title', true); }).then(function () { btn.disabled = false; btn.textContent = old; });
   }
 
   // ---------- PDF ----------
@@ -296,14 +310,6 @@
         rows: r.docs.map(function (x) { return ['№ ' + x.number, dmy(x.date), x.doc_sum == null ? '' : money(x.doc_sum), money(x.debt), x.days == null ? '' : String(x.days)]; })
           .concat([['Итого к оплате', '', '', money(r.total), '']]), boldRows: [r.docs.length], fillRows: [r.docs.length], size: 9.5 });
       if (r.advance > 0.005) d.text('Аванс клиента (предоплата): ' + money(r.advance) + ' ₽', { size: 10 });
-      return d.finish();
-    });
-  }
-  function pdfInv() {
-    var c = S.client;
-    return newDoc().then(function (d) {
-      head(d, 'Счета на оплату', [(c.full || c.name) + (c.inn ? ', ИНН ' + c.inn : ''), 'За последние 6 месяцев']);
-      d.table({ cols: [{ w: 1.5 }, { w: 1.3 }, { w: 1.7, align: 'right' }], head: ['Счёт №', 'Дата', 'Сумма, ₽'], rows: S.inv.map(function (x) { return ['№ ' + x.number, dmy(x.date), money(x.sum)]; }), size: 9.5 });
       return d.finish();
     });
   }
@@ -401,6 +407,120 @@
     });
   }
 
+  // ---------- счёт на оплату ----------
+  var MONTHS_G = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  function longDate(d) { return Number(d.slice(8, 10)) + ' ' + MONTHS_G[Number(d.slice(5, 7)) - 1] + ' ' + d.slice(0, 4) + ' г.'; }
+  function qty(x) { var n = Number(x) || 0; return (Math.round(n) === n ? String(n) : String(n).replace('.', ',')).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  function partyLine(p) { var a = [p.full || p.name]; if (p.inn) a.push('ИНН ' + p.inn); if (p.kpp) a.push('КПП ' + p.kpp); if (p.address) a.push(p.address); if (p.phone) a.push('тел.: ' + p.phone); return a.join(', '); }
+  function stampsFor(p) { var st = S.stamps && S.stamps[p.org.inn]; return st && SIGNERS[p.org.inn] ? Promise.all([NunchiPDF.imageFromURL(st.sign), NunchiPDF.imageFromURL(st.stamp)]) : Promise.resolve(null); }
+  function signer(p, who) { var sg = SIGNERS[p.org.inn]; var fio = who === 'acc' ? (p.acc_short || (sg && sg.short) || '') : (p.head_short || (sg && sg.short) || ''); return fio; }
+
+  function pdfInvoice(p) {
+    return newDoc().then(function () {
+      return stampsFor(p).then(function (im) {
+        var d = new NunchiPDF(S.fonts, { margin: 40, footer: 'Nunchi · сформировано ' + new Date().toLocaleDateString('ru-RU') });
+        var W = d.PW - 80, b = p.bank || {};
+        d.text('Nunchi', { size: 22, bold: true, gap: 0, w: 120 });
+        var yTop = d.y; d.y = 40;
+        d.grid({ x: 175, w: W - 135, size: 8.5, cols: [{ w: 2.2 }, { w: 0.7 }, { w: 2.0 }], boldRows: [],
+          rows: [
+            [{ t: (b.name || ''), span: 1 }, 'БИК', b.bik || ''],
+            [{ t: 'Банк получателя', size: 7.5 }, 'Сч. №', b.corr || ''],
+            [{ t: 'ИНН ' + (p.org.inn || '') + (p.org.kpp ? '    КПП ' + p.org.kpp : ''), span: 1 }, { t: 'Сч. №', span: 1 }, b.account || ''],
+            [{ t: p.org.full || p.org.name, span: 1 }, '', ''],
+            [{ t: 'Получатель', size: 7.5 }, '', '']] });
+        d.y = Math.max(d.y, yTop) + 14;
+        d.text('Счет на оплату № ' + p.number + ' от ' + longDate(p.date), { size: 14, bold: true, gap: 8 });
+        d.grid({ size: 9.5, cols: [{ w: 1.1 }, { w: 6 }], rows: [
+          [{ t: 'Поставщик (исполнитель):', size: 8.5 }, { t: partyLine(p.org), bold: true }],
+          [{ t: 'Покупатель (заказчик):', size: 8.5 }, { t: partyLine(p.buyer), bold: true }],
+          [{ t: 'Основание:', size: 8.5 }, { t: p.contract || '', bold: true }]], noBorders: true });
+        d.space(8);
+        var rows = p.lines.map(function (l) { return [String(l.n), l.name, l.code || '', qty(l.qty), l.unit, money(l.price), money(l.total)]; });
+        var wv = p.with_vat;
+        rows.push([{ t: '', span: 3 }, qty(p.qty), '', '', money(p.total)]);
+        d.grid({ size: 8.5, cols: [{ w: 0.35, align: 'center' }, { w: 3.2 }, { w: 1.3 }, { w: 0.8, align: 'right' }, { w: 0.45 }, { w: 1.0, align: 'right' }, { w: 1.2, align: 'right' }],
+          rows: [['№', 'Товар (Услуга)', 'Код', 'Кол-во', 'Ед.', 'Цена', 'Сумма']].concat(rows), boldRows: [0] });
+        d.space(8);
+        d.text('Итого: ' + money(p.total), { size: 10, bold: true, align: 'right', gap: 2 });
+        d.text((wv ? 'В том числе НДС: ' + money(p.vat) : 'Без НДС'), { size: 10, bold: true, align: 'right', gap: 2 });
+        d.text('Всего к оплате: ' + money(p.total), { size: 10, bold: true, align: 'right', gap: 8 });
+        d.text('Всего наименований ' + p.lines.length + ', на сумму ' + money(p.total) + ' руб.', { size: 9.5, gap: 2 });
+        d.text(words(p.total), { size: 10, bold: true, gap: 10 });
+        d.text('Оплата данного счета означает согласие с условиями поставки товара.', { size: 8.5, gap: 1 });
+        d.text('Уведомление об оплате обязательно, в противном случае не гарантируется наличие товара на складе.', { size: 8.5, gap: 1 });
+        d.text('Товар отпускается по факту прихода денег на р/с Поставщика, самовывозом, при наличии доверенности и паспорта.', { size: 8.5, gap: 16 });
+        d._room(200);
+        var y = d.y;
+        d.text('Руководитель', { size: 10, bold: true, w: 100, gap: 0 });
+        d._line(150, y + 14, 300, y + 14, [0, 0, 0], 0.6); d.text(signer(p, 'head'), { x: 320, w: 160, size: 9.5, gap: 0 });
+        d.y = y + 40; var y2 = d.y;
+        d.text('Бухгалтер', { size: 10, bold: true, w: 100, gap: 0 });
+        d._line(150, y2 + 14, 300, y2 + 14, [0, 0, 0], 0.6); d.text(signer(p, 'acc'), { x: 320, w: 160, size: 9.5, gap: 0 });
+        d.y = y2 + 30;
+        if (im) { d.image(im[0], 160, y - 8, 90, 36); d.image(im[0], 160, y2 - 8, 90, 36); d.image(im[1], 190, y2 + 22, 110, 109); d.y = y2 + 140; }
+        return d.finish();
+      });
+    });
+  }
+
+  // ---------- УПД ----------
+  function pdfUpd(p) {
+    return newDoc().then(function () {
+      return stampsFor(p).then(function (im) {
+        var d = new NunchiPDF(S.fonts, { landscape: true, margin: 28, footer: 'Nunchi · сформировано ' + new Date().toLocaleDateString('ru-RU') });
+        var W = d.PW - 56, wv = p.with_vat, sg = SIGNERS[p.org.inn];
+        var x0 = 28;
+        d.text('Универсальный передаточный документ', { size: 12, bold: true, gap: 2, w: 330 });
+        d.text('Статус: ' + (wv ? '1' : '2'), { size: 9, gap: 0, w: 330 });
+        var yL = d.y; d.y = 28;
+        d.text('Счет-фактура № ' + p.number + ' от ' + dmy(p.date), { x: 380, w: W - 352, size: 10.5, bold: true, gap: 1 });
+        d.text('Исправление № -- от --', { x: 380, w: W - 352, size: 9, gap: 1 });
+        d.y = Math.max(d.y, yL) + 6;
+        var seller = p.org.full || p.org.name, kppI = function (o) { return (o.inn || '') + (o.kpp ? ' / ' + o.kpp : ''); };
+        d.grid({ size: 8.5, noBorders: true, cols: [{ w: 1.5 }, { w: 5 }], rows: [
+          ['Продавец:', seller],
+          ['Адрес:', p.org.address || ''],
+          ['ИНН/КПП продавца:', kppI(p.org)],
+          ['Грузоотправитель и его адрес:', 'он же'],
+          ['Грузополучатель и его адрес:', (p.buyer.name || '') + (p.delivery_address ? ', ' + p.delivery_address : '')],
+          ['К платежно-расчетному документу №', '-- от --'],
+          ['Покупатель:', p.buyer.name || ''],
+          ['Адрес:', p.buyer.address || ''],
+          ['ИНН/КПП покупателя:', kppI(p.buyer)],
+          ['Валюта: наименование, код', 'Российский рубль, 643']] });
+        d.space(6);
+        var rows = p.lines.map(function (l) {
+          return [String(l.n), l.code || '', l.name, '', l.unit_code || '', l.unit, qty(l.qty), money(l.price), money(l.sum), 'без акциза', wv ? l.vat_rate : 'без НДС', wv ? money(l.vat) : '', money(l.total), '', ''];
+        });
+        rows.push([{ t: 'Всего к оплате (9)', span: 8, bold: true, align: 'right' }, { t: money(p.total - (wv ? p.vat : 0)), bold: true }, 'X', 'X', { t: wv ? money(p.vat) : 'без НДС', bold: true }, { t: money(p.total), bold: true }, '', '']);
+        d.grid({ size: 7.5, cols: [{ w: 0.3, align: 'center' }, { w: 0.9 }, { w: 2.6 }, { w: 0.5 }, { w: 0.45 }, { w: 0.5 }, { w: 0.7, align: 'right' }, { w: 0.8, align: 'right' }, { w: 1.0, align: 'right' }, { w: 0.6 }, { w: 0.5 }, { w: 0.8, align: 'right' }, { w: 1.0, align: 'right' }, { w: 0.6 }, { w: 0.6 }],
+          rows: [['№', 'Код товара', 'Наименование товара (описание выполненных работ, оказанных услуг)', 'Код вида', 'Ед. (код)', 'Ед. изм.', 'Кол-во', 'Цена (тариф) за ед.', 'Стоимость без налога', 'Акциз', 'Ставка', 'Сумма налога', 'Стоимость с налогом', 'Страна', 'Номер ТД']].concat(rows), boldRows: [0] });
+        d.space(8);
+        d._room(170);
+        var half = (W - 20) / 2, xr = x0 + half + 20;
+        d.text('Документ подписан: ' + (wv ? 'счет-фактура и передаточный документ (акт)' : 'передаточный документ (акт)'), { size: 8, gap: 6 });
+        var y = d.y;
+        d.text('Руководитель организации или иное уполномоченное лицо', { x: x0, w: half, size: 8.5, gap: 0 });
+        d.y = y; d.text('Главный бухгалтер или иное уполномоченное лицо', { x: xr, w: half, size: 8.5, gap: 0 });
+        var ys = y + 44;
+        d._line(x0, ys, x0 + half - 150, ys, [0, 0, 0], 0.6); d._line(xr, ys, xr + half - 150, ys, [0, 0, 0], 0.6);
+        d.y = ys + 2;
+        d.text('(подпись)', { x: x0 + 30, w: 100, size: 7, gap: 0 }); d.text('(подпись)', { x: xr + 30, w: 100, size: 7, gap: 0 });
+        d.y = ys - 11;
+        d.text(sg ? sg.short : signer(p, 'head'), { x: x0 + half - 140, w: 140, size: 9, gap: 0 }); d.text(signer(p, 'acc'), { x: xr + half - 140, w: 140, size: 9, gap: 0 });
+        d.y = ys + 80;
+        d.text('Товар (груз) передал / услуги, результаты работ, права передал: ______________', { x: x0, w: half, size: 8.5, gap: 2 });
+        d.text('Дата отгрузки: ' + dmy(p.date), { x: x0, w: half, size: 8.5, gap: 0 });
+        d.y = ys + 80;
+        d.text('Товар (груз) получил / услуги, результаты работ, права принял: ______________', { x: xr, w: half, size: 8.5, gap: 2 });
+        d.text('Дата получения: ____________', { x: xr, w: half, size: 8.5, gap: 0 });
+        if (im) { d.image(im[0], x0 + 40, ys - 34, 80, 32); d.image(im[0], xr + 40, ys - 34, 80, 32); d.image(im[1], x0 + 150, ys - 14, 78, 76); }
+        return d.finish();
+      });
+    });
+  }
+
   // кнопки «Поделиться» / «Открыть»: PDF готовится заранее, чтобы «Поделиться» сработало сразу по нажатию
   function makeActions(boxId, builder, filename) {
     var box = $(boxId); show(box, true);
@@ -427,6 +547,7 @@
   $('dc-make').onclick = makeAct;
   $('dc-stamp').onchange = function () { var a = S.act; if (a) makeActions('dc-act-act', function () { return pdfAct(a); }, 'Акт_сверки_' + file(S.client.name) + '_' + a.from + '_' + a.to + '.pdf'); };
   $('dc-inv-load').onclick = loadInv;
+  $('dc-inv').onclick = function (e) { var b = e.target.closest('[data-did]'); if (b) openDoc(b.getAttribute('data-kind'), b.getAttribute('data-did'), b); };
   $('dc-org').onchange = function () { S.org = this.value; S.act = null; $('dc-act').innerHTML = ''; show('dc-act-act', false); loadUnpaid(); };
 
 
