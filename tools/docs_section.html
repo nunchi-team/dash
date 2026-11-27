@@ -157,8 +157,9 @@
     var on = !!S.token;
     document.documentElement.classList.toggle('nn-locked', !on);
     if (on && !S.all) {
-      var mine = {}; (S.match || []).concat([S.name]).forEach(function (m) { mine[String(m).toLowerCase().trim()] = 1; });
-      window.__vis = function (m) { return !!mine[String(m || '').toLowerCase().trim()]; };
+      var nk = function (m) { return String(m || '').toLowerCase().replace(/ё/g, 'е').split(/\s+/).filter(Boolean).sort().join(' '); };  // «Зуев Павел» = «Павел Зуев»
+      var mine = {}; (S.match || []).concat([S.name]).forEach(function (m) { mine[nk(m)] = 1; });
+      window.__vis = function (m) { return !!mine[nk(m)]; };
     } else window.__vis = null;
     if (window.dash) { try { dash.draw('mgrlist'); dash.draw('baselist'); } catch (e) {} }
   }
