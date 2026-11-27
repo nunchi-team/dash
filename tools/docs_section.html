@@ -17,12 +17,8 @@
     <div id="dc-adminbar" hidden><button class="dc-btn" id="dc-admin-btn" type="button">Администрирование ▾</button></div>
     <div id="dc-admin" hidden>
       <button class="dc-link" id="dc-admin-close" type="button">▴ Свернуть администрирование</button>
-      <h4>Менеджеры и доступ</h4>
+      <h4>Менеджеры, PIN и пароль сайта</h4>
       <div id="dc-ulist"></div>
-      <h4 data-closed="1">Нераспределённые точки</h4>
-      <div class="dc-muted">Клиенты, у которых ответственный в 1С — не действующий менеджер сайта (удалён, уволен или не указан). Поменяйте ответственного в 1С — на сайте точка появится у нового менеджера в течение ~20 минут.</div>
-      <div id="dc-unas"></div>
-      <h4 data-closed="1">Добавить менеджера</h4>
       <label class="dc-l" for="dc-emp">Добавить менеджера (выберите сотрудника из 1С)</label>
       <select id="dc-emp"></select>
       <label class="dc-l" for="dc-newname">Как показывать имя (Имя Фамилия)</label>
@@ -30,12 +26,15 @@
       <button class="dc-btn dc-main" id="dc-add" type="button">Добавить и выдать PIN</button>
       <div class="dc-pinbox" id="dc-pinbox" hidden></div>
       <div class="dc-err" id="dc-admin-err" hidden></div>
-      <h4 data-closed="1">Пароль сайта</h4>
+      <div class="dc-l" style="margin-top:16px"><b>Пароль сайта</b></div>
       <div class="dc-muted">Этот пароль вводят при входе на сайт. После смены телефоны менеджеров попросят ввести новый пароль.</div>
       <input id="dc-pw1" type="password" autocomplete="new-password" placeholder="Новый пароль (не короче 10 символов)">
       <input id="dc-pw2" type="password" autocomplete="new-password" placeholder="Повторите пароль" style="margin-top:8px">
       <button class="dc-btn" id="dc-pw-set" type="button">Сменить пароль сайта</button>
       <div class="dc-muted" id="dc-pw-msg"></div>
+      <h4 data-closed="1">Нераспределённые точки</h4>
+      <div class="dc-muted">Клиенты, у которых ответственный в 1С — не действующий менеджер сайта (удалён, уволен или не указан). Поменяйте ответственного в 1С — на сайте точка появится у нового менеджера в течение ~20 минут.</div>
+      <div id="dc-unas"></div>
     </div>
 
     <div id="dc-pick">
