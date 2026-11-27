@@ -303,8 +303,8 @@ def build_html(data, stamp):
     assert tpl.count(marker) == 1, 'в шаблоне нет блока «Пинок недели»'
     tpl = tpl.replace(marker, sec + '\n  ' + marker)
     pub = {k: v for k, v in data.items() if not k.startswith('_')}
-    j = json.dumps(pub, ensure_ascii=False, separators=(',', ':'))
-    tpl, n = re.subn(r'window\.__D = \{.*?\};\n', lambda m: 'window.__D = ' + j.replace('\\', '\\\\') + ';\n', tpl, count=1, flags=re.S)
+    j = json.dumps(pub, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
+    tpl, n = re.subn(r'window\.__D = \{.*?\};\n', lambda m: 'window.__D = ' + j + ';\n', tpl, count=1, flags=re.S)
     assert n == 1, 'в шаблоне нет данных window.__D'
     return tpl
 
