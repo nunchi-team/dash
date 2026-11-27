@@ -195,7 +195,8 @@
     $('dc-act').innerHTML = ''; show('dc-act-act', false); show('dc-stamp-row', false); setErr('dc-act-err', '');
     $('dc-inv').innerHTML = ''; show('dc-doc-act', false); show('dc-doc-title', false); show('dc-inv-load', true);
     show('dc-orgrow', false);
-    var to = new Date(), from = new Date(); from.setMonth(from.getMonth() - 3); from.setDate(from.getDate() + 1);
+    var to = yest(), from = yest(); from.setMonth(from.getMonth() - 3); from.setDate(from.getDate() + 1);
+    $('dc-to').max = iso(yest()); $('dc-from').max = iso(yest());
     $('dc-to').value = iso(to); $('dc-from').value = iso(from);
     buildChips(); loadUnpaid();
   }
@@ -203,10 +204,11 @@
     var list = [['1 мес', 1], ['3 мес', 3], ['6 мес', 6], ['12 мес', 12]];
     if (!S.maxMonths) list.push(['С начала года', 0]);
     $('dc-chips').innerHTML = list.map(function (x) { return '<button type="button" data-m="' + x[1] + '">' + x[0] + '</button>'; }).join('');
-    var l = $('dc-limit'); l.hidden = !S.maxMonths; if (S.maxMonths) l.textContent = 'Акт можно сформировать за период не более ' + S.maxMonths + ' месяцев.';
+    var l = $('dc-limit'); l.hidden = !S.maxMonths; if (S.maxMonths) l.textContent = 'Акт можно сформировать за период не более ' + S.maxMonths + ' месяцев, по вчерашний день.';
   }
+  function yest() { var d = new Date(); d.setDate(d.getDate() - 1); return d; }
   function chip(m) {
-    var to = new Date(), from = new Date();
+    var to = yest(), from = yest();
     if (m === 0) from = new Date(to.getFullYear(), 0, 1); else { from.setMonth(from.getMonth() - m); from.setDate(from.getDate() + 1); }
     $('dc-from').value = iso(from); $('dc-to').value = iso(to);
   }
@@ -243,6 +245,7 @@
     var from = $('dc-from').value, to = $('dc-to').value; setErr('dc-act-err', '');
     if (!from || !to) return setErr('dc-act-err', 'Укажите даты «С» и «По».');
     if (from > to) return setErr('dc-act-err', 'Дата «С» не может быть позже даты «По».');
+    if (to > iso(yest())) return setErr('dc-act-err', 'Акт формируется по вчерашний день (' + dmy(iso(yest())) + '): сегодняшние платежи могут быть ещё не разнесены.');
     if (S.maxMonths) { var lim = new Date(from + 'T00:00:00'); lim.setMonth(lim.getMonth() + S.maxMonths); lim.setDate(lim.getDate() - 1); if (to > iso(lim)) return setErr('dc-act-err', 'Период не больше ' + S.maxMonths + ' месяцев.'); }
     $('dc-make').disabled = true; $('dc-act').innerHTML = '<div class="dc-muted">Формирую акт… это может занять до минуты.</div>'; show('dc-act-act', false);
     var id = S.client.id;
