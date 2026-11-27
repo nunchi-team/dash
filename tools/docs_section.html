@@ -14,6 +14,26 @@
   <div id="dc-app" hidden>
     <div class="dc-top"><span id="dc-who"></span><button class="dc-link" id="dc-exit" type="button">Выйти</button></div>
 
+    <div id="dc-adminbar" hidden><button class="dc-btn" id="dc-admin-btn" type="button">Администрирование</button></div>
+    <div id="dc-admin" hidden>
+      <h4>Менеджеры и доступ</h4>
+      <div id="dc-ulist"></div>
+      <label class="dc-l" for="dc-emp">Добавить менеджера (выберите сотрудника из 1С)</label>
+      <select id="dc-emp"></select>
+      <label class="dc-l" for="dc-newname">Как показывать имя (Имя Фамилия)</label>
+      <input id="dc-newname" type="text" placeholder="Например, Иван Петров" autocomplete="off">
+      <button class="dc-btn dc-main" id="dc-add" type="button">Добавить и выдать PIN</button>
+      <div class="dc-pinbox" id="dc-pinbox" hidden></div>
+      <div class="dc-err" id="dc-admin-err" hidden></div>
+      <h4>Пароль сайта</h4>
+      <div class="dc-muted">Этот пароль вводят при входе на сайт. После смены телефоны менеджеров попросят ввести новый пароль.</div>
+      <input id="dc-pw1" type="password" autocomplete="new-password" placeholder="Новый пароль (не короче 10 символов)">
+      <input id="dc-pw2" type="password" autocomplete="new-password" placeholder="Повторите пароль" style="margin-top:8px">
+      <button class="dc-btn" id="dc-pw-set" type="button">Сменить пароль сайта</button>
+      <div class="dc-muted" id="dc-pw-msg"></div>
+      <button class="dc-link" id="dc-admin-close" type="button">Закрыть администрирование</button>
+    </div>
+
     <div id="dc-pick">
       <input id="dc-q" type="search" placeholder="Найти клиента: название или ИНН" autocomplete="off">
       <div class="dc-muted" id="dc-count"></div>
@@ -72,6 +92,7 @@
 #docs .dc-dates>div{min-width:0}#docs input[type=date]{min-width:0;-webkit-appearance:none;appearance:none;min-height:44px}
 #docs td:first-child{white-space:nowrap}
 #docs .dc-chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px}#docs .dc-chk input{width:auto;min-height:0}
+#docs .dc-urow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--color-border-line);font-size:14px}#docs .dc-urow small{display:block;color:var(--color-fg-muted);font-size:12px}#docs .dc-urow .dc-btn{margin-top:0;padding:6px 10px;font-size:13px}#docs .dc-pinbox{margin-top:10px;padding:12px;border:2px solid var(--color-warn);border-radius:10px;font-size:14px}#docs .dc-pinbox b{font-size:26px;letter-spacing:3px;display:block;margin:4px 0}
 #docs .dc-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
 #docs .dc-chips button{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--color-border-line);border-radius:99px;background:var(--color-bg);color:var(--color-fg);cursor:pointer}
 #docs .dc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -89,8 +110,8 @@
   var API = window.NUNCHI_API || 'https://api.nunchidrink.ru/nunchi-api/api.php';
   var LIB = window.NUNCHI_LIB || '/lib/';
   var $ = function (id) { return document.getElementById(id); };
-  var S = { token: '', name: '', all: false, maxMonths: null, clients: [], client: null, org: '', unpaid: null, act: null, inv: null, fonts: null };
-  try { var sv = JSON.parse(sessionStorage.getItem('nunchi_docs') || 'null'); if (sv && sv.token) { S.token = sv.token; S.name = sv.name; S.all = sv.all; S.maxMonths = sv.maxMonths; } } catch (e) {}
+  var S = { admin: false, stamps: null, token: '', name: '', all: false, maxMonths: null, clients: [], client: null, org: '', unpaid: null, act: null, inv: null, fonts: null };
+  try { var sv = JSON.parse(sessionStorage.getItem('nunchi_docs') || 'null'); if (sv && sv.token) { S.token = sv.token; S.name = sv.name; S.all = sv.all; S.admin = !!sv.admin; S.maxMonths = sv.maxMonths; } } catch (e) {}
 
   function show(el, on) { if (typeof el === 'string') el = $(el); el.hidden = !on; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -125,17 +146,18 @@
     var pin = $('dc-pin').value.trim(); if (!pin) return;
     $('dc-enter').disabled = true; setErr('dc-login-err', '');
     call('login', { pin: pin }, true).then(function (r) {
-      S.token = r.token; S.name = r.name; S.all = !!r.all; S.maxMonths = r.max_months || null;
-      try { sessionStorage.setItem('nunchi_docs', JSON.stringify({ token: S.token, name: S.name, all: S.all, maxMonths: S.maxMonths })); } catch (e) {}
+      S.token = r.token; S.name = r.name; S.all = !!r.all; S.admin = !!r.admin; S.maxMonths = r.max_months || null;
+      try { sessionStorage.setItem('nunchi_docs', JSON.stringify({ token: S.token, name: S.name, all: S.all, admin: S.admin, maxMonths: S.maxMonths })); } catch (e) {}
       $('dc-pin').value = ''; start();
     }).catch(function (e) { setErr('dc-login-err', e.message); }).then(function () { $('dc-enter').disabled = false; });
   }
   function start() {
     show('dc-login', false); show('dc-app', true);
-    $('dc-who').textContent = S.name; show('dc-client', false); show('dc-pick', true);
+    $('dc-who').textContent = S.name; show('dc-client', false); show('dc-pick', true); show('dc-admin', false); show('dc-adminbar', S.admin);
+    S.stamps = null; call('stamp').then(function (r) { S.stamps = r.stamps || {}; }).catch(function () { S.stamps = {}; });
     $('dc-list').innerHTML = '<div class="dc-muted">Загружаю список клиентов…</div>';
     call('clients').then(function (r) {
-      S.clients = r.clients || []; S.all = !!r.all; S.maxMonths = r.max_months || null; renderList();
+      S.clients = r.clients || []; S.all = !!r.all; if (r.admin != null) { S.admin = !!r.admin; show('dc-adminbar', S.admin); } S.maxMonths = r.max_months || null; renderList();
     }).catch(function (e) { $('dc-list').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; });
   }
 
@@ -286,7 +308,6 @@
     });
   }
   // ---- акт сверки по образцу 1С (альбомный лист, две таблицы) ----
-  var IMG = { sign: '__SIGN__', stamp: '__STAMP__' };
   var SIGNERS = { '5047272224': { pos: 'Генеральный Директор', fio: 'Хаушабо Сергей Сергеевич', short: 'Хаушабо С. С.' } };
   var MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
   function qname(full, name) {
@@ -315,14 +336,15 @@
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
   function sd(s) { return s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(2, 4) : ''; }
-  function wantStamp(a) { return a.org && SIGNERS[a.org.inn] && IMG.stamp.length > 100; }
+  function stampOf(a) { return a.org && S.stamps && S.stamps[a.org.inn] ? S.stamps[a.org.inn] : null; }
+  function wantStamp(a) { return !!(SIGNERS[a.org && a.org.inn] && stampOf(a)); }
   function pdfAct(a) {
     var c = Object.assign({}, S.client, a.client || {});
     var withStamp = wantStamp(a) && $('dc-stamp').checked, sg = SIGNERS[a.org.inn] || null;
     var A = qname(a.org.full, a.org.name), B = qname(c.full, c.name);
     return newDoc().then(function (d0) {
       var d = new NunchiPDF(S.fonts, { landscape: true, margin: 40, footer: 'Nunchi · сформировано ' + new Date().toLocaleDateString('ru-RU') });
-      var imgs = withStamp ? Promise.all([NunchiPDF.imageFromURL(IMG.sign), NunchiPDF.imageFromURL(IMG.stamp)]) : Promise.resolve(null);
+      var imgs = withStamp ? Promise.all([NunchiPDF.imageFromURL(stampOf(a).sign), NunchiPDF.imageFromURL(stampOf(a).stamp)]) : Promise.resolve(null);
       return imgs.then(function (im) {
         var W = d.PW - 80;
         d.text('Акт сверки', { size: 15, bold: true, align: 'center', gap: 4 });
@@ -406,6 +428,55 @@
   $('dc-stamp').onchange = function () { var a = S.act; if (a) makeActions('dc-act-act', function () { return pdfAct(a); }, 'Акт_сверки_' + file(S.client.name) + '_' + a.from + '_' + a.to + '.pdf'); };
   $('dc-inv-load').onclick = loadInv;
   $('dc-org').onchange = function () { S.org = this.value; S.act = null; $('dc-act').innerHTML = ''; show('dc-act-act', false); loadUnpaid(); };
+
+
+  // ---------- администрирование ----------
+  function flipName(emp) { var p = (emp || '').trim().split(/\s+/); return p.length >= 2 ? p[1] + ' ' + p[0] : (emp || ''); }
+  function aErr(m) { setErr('dc-admin-err', m); }
+  function pinBox(name, pin, what) {
+    var b = $('dc-pinbox'); b.hidden = false;
+    b.innerHTML = esc(what) + ' <b>' + esc(name) + '</b>PIN:<b>' + esc(pin) + '</b>Покажется только сейчас. Перешлите его менеджеру лично и сразу запишите.';
+  }
+  function loadAdmin() {
+    aErr(''); $('dc-ulist').innerHTML = '<div class="dc-muted">Загружаю…</div>';
+    call('admin_users', {}, true).then(function (r) {
+      $('dc-ulist').innerHTML = r.users.map(function (u) {
+        return '<div class="dc-urow"><div>' + esc(u.name) + (u.admin ? ' <small>администратор</small>' : '<small>в 1С: ' + esc((u.match || []).join(', ')) + (u.has_pin ? '' : ' · PIN не задан') + '</small>') + '</div><div>' +
+          (u.admin ? '' : '<button class="dc-btn" data-pin="' + esc(u.name) + '" type="button">Новый PIN</button> <button class="dc-btn" data-del="' + esc(u.name) + '" type="button">Удалить</button>') + '</div></div>';
+      }).join('');
+      $('dc-emp').innerHTML = '<option value="">— выберите сотрудника —</option>' + r.employees.map(function (e) { return '<option>' + esc(e) + '</option>'; }).join('');
+      $('dc-pw-msg').textContent = r.site_pw_changed ? 'Пароль менялся ' + r.site_pw_changed.slice(0, 10).split('-').reverse().join('.') + '.' : '';
+      S.autoApply = !!r.auto_apply;
+    }).catch(function (e) { $('dc-ulist').innerHTML = ''; aErr(e.message); });
+  }
+  $('dc-admin-btn').onclick = function () { show('dc-admin', true); show('dc-pick', false); show('dc-client', false); show('dc-adminbar', false); $('dc-pinbox').hidden = true; loadAdmin(); };
+  $('dc-admin-close').onclick = function () { show('dc-admin', false); show('dc-pick', true); show('dc-adminbar', S.admin); };
+  $('dc-emp').onchange = function () { if (this.value) $('dc-newname').value = flipName(this.value); };
+  $('dc-add').onclick = function () {
+    aErr(''); var nm = $('dc-newname').value.trim(), emp = $('dc-emp').value;
+    if (nm.length < 3) return aErr('Впишите имя менеджера.');
+    $('dc-add').disabled = true;
+    call('admin_add', { name: nm, emp: emp }, true).then(function (r) { pinBox(r.name, r.pin, 'Добавлен менеджер'); $('dc-newname').value = ''; loadAdmin(); })
+      .catch(function (e) { aErr(e.message); }).then(function () { $('dc-add').disabled = false; });
+  };
+  $('dc-ulist').onclick = function (e) {
+    var p = e.target.closest('[data-pin]'), d = e.target.closest('[data-del]');
+    if (p) { var n = p.getAttribute('data-pin'); if (!confirm('Выдать новый PIN для «' + n + '»? Старый перестанет работать.')) return;
+      call('admin_pin', { name: n }, true).then(function (r) { pinBox(r.name, r.pin, 'Новый PIN для'); }).catch(function (x) { aErr(x.message); }); }
+    if (d) { var n2 = d.getAttribute('data-del'); if (!confirm('Удалить менеджера «' + n2 + '»? Он потеряет доступ.')) return;
+      call('admin_del', { name: n2 }, true).then(function () { $('dc-pinbox').hidden = true; loadAdmin(); }).catch(function (x) { aErr(x.message); }); }
+  };
+  $('dc-pw-set').onclick = function () {
+    var a = $('dc-pw1').value, b = $('dc-pw2').value; aErr('');
+    if (a.length < 10) return aErr('Пароль не короче 10 символов.');
+    if (a !== b) return aErr('Пароли не совпадают.');
+    if (!confirm('Сменить пароль сайта? Всем менеджерам придётся ввести новый пароль.')) return;
+    $('dc-pw-set').disabled = true;
+    call('admin_sitepw', { password: a }, true).then(function (r) {
+      $('dc-pw1').value = ''; $('dc-pw2').value = '';
+      $('dc-pw-msg').textContent = r.started ? 'Готово. Сайт обновляется, через 2–3 минуты нужен будет новый пароль.' : 'Пароль сохранён. Сайт обновится автоматически в течение 3 часов.';
+    }).catch(function (e) { aErr(e.message); }).then(function () { $('dc-pw-set').disabled = false; });
+  };
 
   if (S.token) start();
 })();

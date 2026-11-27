@@ -317,7 +317,7 @@ def write_status(**kw):
 
 def main():
     user, pw, site = (os.environ.get(k, '').strip() for k in ('ODATA_USER', 'ADMIN_KEY', 'SITE_PASSWORD'))
-    miss = [k for k, v in (('ADMIN_KEY', pw), ('SITE_PASSWORD', site)) if not v]
+    miss = [k for k, v in (('ADMIN_KEY', pw),) if not v]
     if miss:
         write_status(ok=False, step='нет секретов: ' + ', '.join(miss)); print('нет секретов', miss); return
     try:
@@ -326,8 +326,15 @@ def main():
         if len(orders) < 500:
             raise RuntimeError('из 1С пришло слишком мало накладных (%d): страницу не трогаю' % len(orders))
         data = compute(orders, clients, emps, today)
-        stamp = decrypt_stamp(site)
-        html = build_html(data, stamp)
+        try:  # пароль сайта: если его меняли на самом сайте, он лежит на хостинге
+            site_new = (api_export('sitepw', pw) or {}).get('password')
+        except Exception:
+            site_new = None
+        if site_new:
+            site = site_new
+        if not site:
+            raise RuntimeError('нет пароля сайта (секрет SITE_PASSWORD или пароль, заданный на сайте)')
+        html = build_html(data, {})
         out = encrypt_page(html, site)
         path = os.path.join(ROOT, TARGET)
         os.makedirs(os.path.dirname(path), exist_ok=True)
