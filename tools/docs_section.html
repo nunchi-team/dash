@@ -1,7 +1,7 @@
     <div class="dc-top" id="dc-bar" hidden>
   <div class="dc-user">
     <button class="dc-ub" id="dc-userbtn" type="button" aria-haspopup="true" aria-expanded="false"><span class="dc-ava" id="dc-ava"></span><span class="dc-un"><b id="dc-who"></b><small id="dc-role"></small></span><span class="dc-chev">▾</span></button>
-    <div class="dc-menu" id="dc-menu" hidden><button class="dc-menuitem" id="dc-exit" type="button">Выйти из аккаунта</button></div>
+    <div class="dc-menu" id="dc-menu" hidden><button class="dc-menuitem dc-sw" id="dc-switch" type="button">Войти под другим PIN</button><button class="dc-menuitem" id="dc-exit" type="button">Выйти из аккаунта</button></div>
   </div>
   <div id="dc-adminbar" hidden><button class="dc-btn" id="dc-admin-btn" type="button">Администрирование</button></div>
 </div>
@@ -102,6 +102,7 @@
 #dc-bar .dc-chev{font-size:12px;color:var(--color-fg-muted)}
 #dc-bar .dc-menu{position:absolute;z-index:5;top:100%;left:0;margin-top:6px;min-width:190px;padding:6px;border:1px solid var(--color-border-line);border-radius:10px;background:var(--color-bg);box-shadow:0 4px 14px rgba(0,0,0,.12)}
 #dc-bar .dc-menuitem{display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:9px 10px;border:0;border-radius:8px;background:none;color:#B4351F;cursor:pointer}
+#dc-bar .dc-sw{color:var(--color-fg)}
 #dc-bar .dc-menuitem:hover{background:rgba(0,0,0,.05)}
 #dc-bar .dc-btn{font:inherit;border-radius:10px;border:1px solid var(--color-border-line);background:var(--color-bg);color:var(--color-fg);cursor:pointer;margin-top:0;font-size:13.5px;padding:8px 12px;white-space:nowrap}
 #docs .dc-pw{position:relative;flex:1 1 140px;min-width:120px}#docs .dc-pw input{padding-right:42px;width:100%}
@@ -185,7 +186,7 @@
     if (!keepMsg) { try { localStorage.removeItem('nunchi_pw'); localStorage.removeItem('nunchi_k'); } catch (e) {} applyView(); location.reload(); return; }  // «Выйти» — выход отовсюду, нужен пароль сайта заново
     applyView();
     $('dc-pin').value = ''; show('dc-app', false); show('dc-bar', false); show('dc-login', true);
-    setErr('dc-login-err', 'Сессия закончилась. Введите PIN ещё раз.');
+    if (keepMsg === 'switch') { setErr('dc-login-err', ''); try { $('dc-pin').focus(); } catch (e) {} } else setErr('dc-login-err', 'Сессия закончилась. Введите PIN ещё раз.');
   }
   function enter() {
     var pin = $('dc-pin').value.trim(); if (!pin) return;
@@ -734,6 +735,7 @@
   $('dc-enter').onclick = enter;
   $('dc-pin').onkeydown = function (e) { if (e.key === 'Enter') enter(); };
   $('dc-exit').onclick = function () { logout(false); };
+  $('dc-switch').onclick = function () { show('dc-menu', false); logout('switch'); window.scrollTo({ top: $('docs').offsetTop - 20 }); };
   $('dc-userbtn').onclick = function (e) { e.stopPropagation(); var m = $('dc-menu'); m.hidden = !m.hidden; $('dc-userbtn').setAttribute('aria-expanded', String(!m.hidden)); };
   document.addEventListener('click', function (e) { var m = $('dc-menu'); if (m && !m.hidden && !e.target.closest('#dc-menu')) m.hidden = true; });
   $('dc-pineye').onclick = function () { var i = $('dc-pin'); i.type = i.type === 'password' ? 'text' : 'password'; };
