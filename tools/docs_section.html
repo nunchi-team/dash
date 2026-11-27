@@ -65,13 +65,10 @@
       <div class="dc-chips" id="dc-orgrow" hidden></div>
       <div id="dc-unpaid"><div class="dc-muted">Загружаю…</div></div>
       <div class="dc-actions" id="dc-unpaid-act" hidden></div>
-
-      <h4>Счета и УПД</h4>
-      <div class="dc-muted">За последние 12 месяцев. Нажмите на документ — получите PDF.</div>
-      <button class="dc-btn" id="dc-inv-load" type="button">Показать документы</button>
-      <div id="dc-inv"></div>
       <div class="dc-sum" id="dc-doc-title" hidden></div>
       <div class="dc-actions" id="dc-doc-act" hidden></div>
+
+      <div hidden><button id="dc-inv-load" type="button"></button><div id="dc-inv"></div></div>
     </div>
   </div>
 </section>
@@ -252,9 +249,9 @@
       var h = '';
       if (!r.docs.length) h += '<div class="dc-sum">Неоплаченных накладных нет.</div>';
       else {
-        h += '<div class="dc-tw"><table><tr><th>УПД</th><th>Дата</th><th class="r">Сумма</th><th class="r">Долг</th><th class="r">Дней</th></tr>' +
-          r.docs.map(function (d) { return '<tr><td>№ ' + esc(d.number) + '</td><td>' + dmy(d.date) + '</td><td class="r">' + (d.doc_sum == null ? '' : money(d.doc_sum)) + '</td><td class="r">' + money(d.debt) + '</td><td class="r">' + (d.days == null ? '' : d.days) + '</td></tr>'; }).join('') +
-          '<tr class="dc-tot"><td colspan="3">Итого к оплате</td><td class="r">' + money(r.total) + '</td><td></td></tr></table></div>';
+        h += '<div class="dc-tw"><table><tr><th>УПД</th><th>Дата</th><th class="r">Сумма</th><th class="r">Долг</th><th class="r">Дней</th><th></th></tr>' +
+          r.docs.map(function (d) { return '<tr><td>№ ' + esc(d.number) + '</td><td>' + dmy(d.date) + '</td><td class="r">' + (d.doc_sum == null ? '' : money(d.doc_sum)) + '</td><td class="r">' + money(d.debt) + '</td><td class="r">' + (d.days == null ? '' : d.days) + '</td><td><button class="dc-btn" type="button" data-kind="upd" data-did="' + esc(d.id) + '" style="margin:0;padding:5px 9px;font-size:12.5px">PDF</button></td></tr>'; }).join('') +
+          '<tr class="dc-tot"><td colspan="3">Итого к оплате</td><td class="r">' + money(r.total) + '</td><td></td><td></td></tr></table></div>';
       }
       if (r.advance > 0.005) h += '<div class="dc-sum">Аванс клиента (предоплата): ' + money(r.advance) + ' ₽</div>';
       (r.others || []).forEach(function (o) { h += '<div class="dc-warn">' + esc(o.label) + ': ' + money(o.debt) + ' ₽ (в список не входит)</div>'; });
@@ -711,6 +708,7 @@
   $('dc-chips').onclick = function (e) { var b = e.target.closest('[data-m]'); if (b) chip(Number(b.getAttribute('data-m'))); };
   $('dc-stamp').onchange = function () { var a = S.act; if (a) makeActions('dc-act-act', function () { return pdfAct(a); }, 'Акт_сверки_' + file(S.client.name) + '_' + a.from + '_' + a.to + '.pdf'); };
   $('dc-inv-load').onclick = loadInv;
+  $('dc-unpaid').onclick = function (e) { var b = e.target.closest('[data-did]'); if (b) openDoc(b.getAttribute('data-kind'), b.getAttribute('data-did'), b); };
   $('dc-inv').onclick = function (e) { var b = e.target.closest('[data-did]'); if (b) openDoc(b.getAttribute('data-kind'), b.getAttribute('data-did'), b); };
   $('dc-orgrow').onclick = function (e) { var b = e.target.closest('[data-uorg]'); if (!b) return; S.org = b.getAttribute('data-uorg'); loadUnpaid(); };
   $('dc-actbtns').onclick = function (e) { var b = e.target.closest('[data-aorg]'); if (b) makeAct(b.getAttribute('data-aorg')); };
