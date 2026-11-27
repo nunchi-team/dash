@@ -302,6 +302,8 @@ def build_html(data, stamp):
     marker = '<section class="card kick" id="kick">'
     assert tpl.count(marker) == 1, 'в шаблоне нет блока «Пинок недели»'
     tpl = tpl.replace(marker, sec + '\n  ' + marker)
+    tpl, nk = re.subn(r'<section class="card kick" id="kick">.*?</section>\s*', '', tpl, count=1, flags=re.S)  # «Пинок недели» убран
+    assert nk == 1, 'не нашёл блок «Пинок недели» для удаления'
     pub = {k: v for k, v in data.items() if not k.startswith('_')}
     j = json.dumps(pub, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
     tpl, n = re.subn(r'window\.__D = \{.*?\};\n', lambda m: 'window.__D = ' + j + ';\n', tpl, count=1, flags=re.S)

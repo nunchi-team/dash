@@ -14,13 +14,15 @@
   <div id="dc-app" hidden>
     <div class="dc-top"><span id="dc-who"></span><button class="dc-link" id="dc-exit" type="button">Выйти</button></div>
 
-    <div id="dc-adminbar" hidden><button class="dc-btn" id="dc-admin-btn" type="button">Администрирование</button></div>
+    <div id="dc-adminbar" hidden><button class="dc-btn" id="dc-admin-btn" type="button">Администрирование ▾</button></div>
     <div id="dc-admin" hidden>
+      <button class="dc-link" id="dc-admin-close" type="button">▴ Свернуть администрирование</button>
       <h4>Менеджеры и доступ</h4>
       <div id="dc-ulist"></div>
-      <h4>Нераспределённые точки</h4>
+      <h4 data-closed="1">Нераспределённые точки</h4>
       <div class="dc-muted">Клиенты, у которых ответственный в 1С — не действующий менеджер сайта (удалён, уволен или не указан). Поменяйте ответственного в 1С — на сайте точка появится у нового менеджера в течение ~20 минут.</div>
       <div id="dc-unas"></div>
+      <h4 data-closed="1">Добавить менеджера</h4>
       <label class="dc-l" for="dc-emp">Добавить менеджера (выберите сотрудника из 1С)</label>
       <select id="dc-emp"></select>
       <label class="dc-l" for="dc-newname">Как показывать имя (Имя Фамилия)</label>
@@ -28,13 +30,12 @@
       <button class="dc-btn dc-main" id="dc-add" type="button">Добавить и выдать PIN</button>
       <div class="dc-pinbox" id="dc-pinbox" hidden></div>
       <div class="dc-err" id="dc-admin-err" hidden></div>
-      <h4>Пароль сайта</h4>
+      <h4 data-closed="1">Пароль сайта</h4>
       <div class="dc-muted">Этот пароль вводят при входе на сайт. После смены телефоны менеджеров попросят ввести новый пароль.</div>
       <input id="dc-pw1" type="password" autocomplete="new-password" placeholder="Новый пароль (не короче 10 символов)">
       <input id="dc-pw2" type="password" autocomplete="new-password" placeholder="Повторите пароль" style="margin-top:8px">
       <button class="dc-btn" id="dc-pw-set" type="button">Сменить пароль сайта</button>
       <div class="dc-muted" id="dc-pw-msg"></div>
-      <button class="dc-link" id="dc-admin-close" type="button">Закрыть администрирование</button>
     </div>
 
     <div id="dc-pick">
@@ -78,6 +79,7 @@
 <style>
 #dash-root .mb #docs h3{margin:6px 0 0;font-size:17px}
 #dash-root .mb #docs h4{margin:18px 0 4px;font-size:15px;padding-top:12px;border-top:1px solid var(--color-border-line)}
+#docs h4[data-c]::after{content:' ▴';color:var(--color-fg-muted)}#docs h4[data-c="1"]::after{content:' ▾'}
 #docs .dc-muted{color:var(--color-fg-muted);font-size:13px}
 #docs .dc-l{display:block;font-size:12.5px;color:var(--color-fg-muted);margin:8px 0 4px}
 #docs input,#docs select{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--color-border-line);border-radius:10px;background:var(--color-bg);color:var(--color-fg)}
@@ -568,15 +570,13 @@
     if (!list.length) { $('dc-unas').innerHTML = '<div class="dc-sum">Нераспределённых точек нет — у всех клиентов есть действующий менеджер.</div>'; return; }
     var by = {}; list.forEach(function (c) { var m = c.manager || 'не указан'; by[m] = (by[m] || 0) + 1; });
     var hdr = '<div class="dc-sum"><b>Всего: ' + list.length + '</b> (' + Object.keys(by).map(function (k) { return esc(k) + ': ' + by[k]; }).join('; ') + ')</div>';
-    var tbl = '<div class="dc-tw"><table><tr><th>Клиент</th><th>Был у</th><th>Последняя отгрузка</th></tr>' +
-      list.slice(0, 300).map(function (c) { return '<tr><td>' + esc(c.name) + '</td><td>' + esc(c.manager || '—') + '</td><td>' + esc(c.last ? dmy(String(c.last).slice(0, 10)) : '') + '</td></tr>'; }).join('') + '</table></div>' + (list.length > 300 ? '<div class="dc-muted">Показаны первые 300 из ' + list.length + '.</div>' : '');
-    $('dc-unas').innerHTML = hdr + '<button class="dc-btn" type="button" id="dc-unas-tog">Показать список ▾</button><div id="dc-unas-list" hidden>' + tbl + '</div>';
-    $('dc-unas-tog').onclick = function () { var b = $('dc-unas-list'); b.hidden = !b.hidden; this.textContent = b.hidden ? 'Показать список ▾' : 'Свернуть список ▴'; };
+    var tbl = list.slice(0, 300).map(function (c) { return '<div class="dc-urow"><div>' + esc(c.name) + '<small>' + (c.manager ? 'был у: ' + esc(c.manager) : '<b>без менеджера</b>') + (c.last ? ' · последняя отгрузка ' + dmy(String(c.last).slice(0, 10)) : '') + '</small></div></div>'; }).join('') + (list.length > 300 ? '<div class="dc-muted">Показаны первые 300 из ' + list.length + '.</div>' : '');
+    $('dc-unas').innerHTML = hdr + tbl;
   }
   function loadAdmin() {
     aErr(''); $('dc-ulist').innerHTML = '<div class="dc-muted">Загружаю…</div>';
     call('admin_users', {}, true).then(function (r) {
-      $('dc-ulist').innerHTML = r.users.map(function (u) {
+      $('dc-ulist').innerHTML = r.users.slice().sort(function (a, b) { return (b.admin ? 1 : 0) - (a.admin ? 1 : 0); }).map(function (u) {
         return '<div class="dc-urow"><div>' + esc(u.name) + (u.admin ? ' <small>администратор</small>' : '<small>в 1С: ' + esc((u.match || []).join(', ')) + (u.has_pin ? '' : ' · PIN не задан') + '</small>') + '</div><div>' +
           (u.admin ? '' : '<button class="dc-btn" data-pin="' + esc(u.name) + '" type="button">Новый PIN</button> <button class="dc-btn" data-del="' + esc(u.name) + '" type="button">Удалить</button>') + '</div></div>';
       }).join('');
@@ -586,8 +586,8 @@
       renderUnas(r.users);
     }).catch(function (e) { $('dc-ulist').innerHTML = ''; aErr(e.message); });
   }
-  $('dc-admin-btn').onclick = function () { show('dc-admin', true); show('dc-pick', false); show('dc-client', false); show('dc-adminbar', false); $('dc-pinbox').hidden = true; loadAdmin(); };
-  $('dc-admin-close').onclick = function () { show('dc-admin', false); show('dc-pick', true); show('dc-adminbar', S.admin); };
+  $('dc-admin-btn').onclick = function () { if (!$('dc-admin').hidden) { $('dc-admin-close').onclick(); return; } show('dc-admin', true); show('dc-pick', false); show('dc-client', false); $('dc-admin-btn').textContent = 'Администрирование ▴'; $('dc-pinbox').hidden = true; loadAdmin(); };
+  $('dc-admin-close').onclick = function () { show('dc-admin', false); show('dc-pick', true); show('dc-adminbar', S.admin); $('dc-admin-btn').textContent = 'Администрирование ▾'; };
   $('dc-emp').onchange = function () { if (this.value) $('dc-newname').value = flipName(this.value); };
   $('dc-add').onclick = function () {
     aErr(''); var nm = $('dc-newname').value.trim(), emp = $('dc-emp').value;
@@ -614,6 +614,21 @@
       $('dc-pw-msg').textContent = r.started ? 'Готово. Сайт обновляется, через 2–3 минуты нужен будет новый пароль.' : 'Пароль сохранён. Сайт обновится автоматически в течение 3 часов.';
     }).catch(function (e) { aErr(e.message); }).then(function () { $('dc-pw-set').disabled = false; });
   };
+
+
+  // сворачиваемые разделы: заголовок h4 прячет/показывает всё до следующего h4
+  function foldable(root) {
+    var hs = Array.prototype.slice.call(root.querySelectorAll(':scope > h4'));
+    hs.forEach(function (h) {
+      var box = document.createElement('div'), n = h.nextSibling;
+      while (n && !(n.nodeType === 1 && n.tagName === 'H4')) { var nx = n.nextSibling; box.appendChild(n); n = nx; }
+      h.parentNode.insertBefore(box, h.nextSibling);
+      var closed = h.getAttribute('data-closed') === '1';
+      var set = function (c) { box.hidden = c; h.setAttribute('data-c', c ? '1' : '0'); };
+      set(closed); h.style.cursor = 'pointer'; h.onclick = function () { set(!box.hidden); };
+    });
+  }
+  foldable($('dc-admin')); foldable($('dc-client'));
 
   if (S.token) start();
 })();
