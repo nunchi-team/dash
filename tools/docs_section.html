@@ -318,7 +318,8 @@
     });
   }
   // ---- акт сверки по образцу 1С (альбомный лист, две таблицы) ----
-  var SIGNERS = { '5047272224': { pos: 'Генеральный Директор', fio: 'Хаушабо Сергей Сергеевич', short: 'Хаушабо С. С.' } };
+  var SIGNERS = { '5047272224': { pos: 'Генеральный Директор', fio: 'Хаушабо Сергей Сергеевич', short: 'Хаушабо С. С.' }, '222504277934': { pos: 'Индивидуальный предприниматель', fio: 'Сазанов Игорь Олегович', short: 'Сазанов И. О.' } };
+  function isIPorg(o) { return !!o && String(o.inn || '').length === 12; }
   var MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
   function qname(full, name) {
     var t = (full || '').trim();
@@ -345,10 +346,80 @@
     var s = parts.join(' ') + ' ' + form(rub, 'рубль', 'рубля', 'рублей') + ' ' + String(kop).padStart(2, '0') + ' ' + form(kop, 'копейка', 'копейки', 'копеек');
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
+  function sd2(s) { return s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4) : ''; }
   function sd(s) { return s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(2, 4) : ''; }
   function stampOf(a) { return a.org && S.stamps && S.stamps[a.org.inn] ? S.stamps[a.org.inn] : null; }
   function wantStamp(a) { return !!(SIGNERS[a.org && a.org.inn] && stampOf(a)); }
+
+  // ---------- акт сверки для ИП (форма «АКТ СВЕРКИ ВЗАИМНЫХ РАСЧЕТОВ») ----------
+  function docIP(l) {
+    var t = String(l.doc || '');
+    var m = t.match(/^Продажа \((.+?) от (\d{2}\.\d{2}\.\d{4})\)/);
+    if (m) return 'Расходная накладная № ' + m[1] + ' от ' + m[2] + ' г.';
+    m = t.match(/^Оплата, п\/п №(.+?) от (\d{2}\.\d{2}\.\d{4})/);
+    if (m) return 'Поступление на счет № ' + m[1] + ' от ' + m[2] + ' г.';
+    m = t.match(/^Оплата в кассу (.+)/);
+    if (m) return 'Поступление в кассу № ' + m[1] + ' от ' + dmy(l.date) + ' г.';
+    m = t.match(/^Оплата \(поступление на р\/с (.+)\)/);
+    if (m) return 'Поступление на счет № ' + m[1] + ' от ' + dmy(l.date) + ' г.';
+    return t;
+  }
+  function pdfActIP(a) {
+    var c = Object.assign({}, S.client, a.client || {});
+    var sg = SIGNERS[a.org.inn] || null, withSign = wantStamp(a) && $('dc-stamp').checked;
+    var A = a.org.full || a.org.name, B = qname(c.full, c.name);
+    var addrA = a.org.address || '', addrB = c.address || '';
+    var now = new Date(); var nowTxt = now.getDate() + ' ' + MONTHS_G[now.getMonth()] + ' ' + now.getFullYear() + ' г.';
+    var per = function (x) { var t = new Date(x + 'T00:00:00'); return t.getDate() + ' ' + MONTHS_G[t.getMonth()] + ' ' + t.getFullYear() + ' г.'; };
+    return newDoc().then(function () {
+      var imgs = withSign && stampOf(a) && stampOf(a).sign ? NunchiPDF.imageFromURL(stampOf(a).sign) : Promise.resolve(null);
+      return imgs.then(function (sig) {
+        var d = new NunchiPDF(S.fonts, { landscape: true, margin: 40, footer: 'Nunchi · сформировано ' + new Date().toLocaleDateString('ru-RU') });
+        var W = d.PW - 80, ipLine = A + ', ИНН ' + a.org.inn + (addrA ? ', ' + addrA : '');
+        d.text('АКТ СВЕРКИ ВЗАИМНЫХ РАСЧЕТОВ', { size: 14, bold: true, align: 'center', gap: 2 });
+        d.text('Документ сформирован ' + nowTxt, { size: 9, align: 'center', gap: 10 });
+        d.text('Документ составлен между следующими хозяйствующими субъектами:', { size: 9.5, gap: 2 });
+        d.text('1. ' + ipLine, { size: 9.5, gap: 1 });
+        d.text('2. ' + B + (c.inn ? ', ИНН ' + c.inn : '') + (addrB ? ', ' + addrB : ''), { size: 9.5, gap: 8 });
+        d.text('Мы, нижеподписавшиеся, ' + (sg ? sg.pos + ' ' + sg.fio : A) + ', с одной стороны, и ________________ ' + B + ' ________________, с другой стороны, составили настоящий акт сверки в том, что в период с ' + per(a.from) + ' по ' + per(a.to) + ' были осуществлены следующие расчеты:', { size: 9.5, gap: 6 });
+        var open = a.opening, clo = a.closing;
+        var rows = [[{ t: 'Дата', align: 'center' }, { t: 'Описание документа', align: 'center' }, { t: 'Долг ' + A, align: 'center' }, { t: 'Долг ' + B, align: 'center' }],
+          [{ t: 'Сальдо на начало периода составляло', span: 3, bold: true }, { t: open > 0.004 ? money(open) : (open < -0.004 ? '' : ''), bold: true, align: 'right' }]];
+        if (open < -0.004) rows[1] = [{ t: 'Сальдо на начало периода составляло', span: 2, bold: true }, { t: money(-open), bold: true, align: 'right' }, ''];
+        a.lines.forEach(function (l) {
+          rows.push([sd2(l.date), docIP(l), l.credit ? money(l.credit) : '', l.debit ? money(l.debit) : '']);
+        });
+        rows.push([{ t: 'Обороты за период составили', span: 2 }, money(a.credit), money(a.debit)]);
+        var n = rows.length;
+        var tail = clo > 0.004 ? [{ t: 'Сальдо на конец периода составило', span: 3, bold: true }, { t: money(clo), bold: true, align: 'right' }] : clo < -0.004 ? [{ t: 'Сальдо на конец периода составило', span: 2, bold: true }, { t: money(-clo), bold: true, align: 'right' }, ''] : [{ t: 'Сальдо на конец периода составило', span: 3, bold: true }, { t: '0,00', bold: true, align: 'right' }];
+        rows.push(tail);
+        d.grid({ size: 8, pad: 1.8, cols: [{ w: 0.9, align: 'center' }, { w: 5 }, { w: 1.6, align: 'right' }, { w: 1.6, align: 'right' }], rows: rows, boldRows: [] });
+        d.space(8);
+        var who = clo > 0.004 ? B : clo < -0.004 ? A : '';
+        var txt = who ? 'Таким образом, по данным ' + A + ' на ' + per(a.to) + ' задолженность ' + (clo > 0.004 ? B : A) + ' составила ' + money(Math.abs(clo)) + ' руб. (' + words(clo) + ').' : 'Таким образом, на ' + per(a.to) + ' задолженность отсутствует.';
+        d._room(190);
+        d.text(txt, { size: 9.5, gap: 6 });
+        d.text('По результатам сверки расхождений не выявлено.', { size: 9.5, gap: 12 });
+        var half = (W - 60) / 2, y0 = d.y, xr = 40 + half + 60;
+        d.text(A + ', ИНН ' + a.org.inn + (addrA ? ', ' + addrA : ''), { x: 40, w: half, size: 8.5, align: 'center', gap: 0 });
+        var yl = d.y; d.y = y0;
+        d.text(B + (c.inn ? ', ИНН ' + c.inn : '') + (addrB ? ', ' + addrB : ''), { x: xr, w: half, size: 8.5, align: 'center', gap: 0 });
+        var ys = Math.max(yl, d.y) + 12;
+        [[40, sg ? sg.pos : '', sg ? sg.short : ''], [xr, '', '']].forEach(function (b) {
+          d.y = ys; d.text(b[1], { x: b[0], w: half, size: 8.5, align: 'center', gap: 0 });
+          d._line(b[0], ys + 14, b[0] + half, ys + 14, [0, 0, 0], 0.5); d.y = ys + 15; d.text('должность', { x: b[0], w: half, size: 6.5, align: 'center', gap: 0 });
+          d._line(b[0], ys + 44, b[0] + half, ys + 44, [0, 0, 0], 0.5); d.y = ys + 45; d.text('подпись', { x: b[0], w: half, size: 6.5, align: 'center', gap: 0 });
+          d.y = ys + 56; d.text(b[2], { x: b[0], w: half, size: 8.5, align: 'center', gap: 0 });
+          d._line(b[0], ys + 68, b[0] + half, ys + 68, [0, 0, 0], 0.5); d.y = ys + 69; d.text('расшифровка', { x: b[0], w: half, size: 6.5, align: 'center', gap: 0 });
+          d.y = ys + 80; d.text('М.П.', { x: b[0] + half - 40, w: 40, size: 8.5, align: 'right', gap: 0 });
+        });
+        if (sig) d.image(sig, 40 + half / 2 - 30, ys + 16, 60, 28);
+        return d.finish();
+      });
+    });
+  }
   function pdfAct(a) {
+    if (isIPorg(a.org)) return pdfActIP(a);
     var c = Object.assign({}, S.client, a.client || {});
     var withStamp = wantStamp(a) && $('dc-stamp').checked, sg = SIGNERS[a.org.inn] || null;
     var A = qname(a.org.full, a.org.name), B = qname(c.full, c.name);
@@ -416,7 +487,7 @@
   function longDate(d) { return Number(d.slice(8, 10)) + ' ' + MONTHS_G[Number(d.slice(5, 7)) - 1] + ' ' + d.slice(0, 4) + ' г.'; }
   function qty(x) { var n = Number(x) || 0; return (Math.round(n) === n ? String(n) : String(n).replace('.', ',')).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
   function partyLine(p) { var a = [p.full || p.name]; if (p.inn) a.push('ИНН ' + p.inn); if (p.kpp) a.push('КПП ' + p.kpp); if (p.address) a.push(p.address); if (p.phone) a.push('тел.: ' + p.phone); return a.join(', '); }
-  function stampsFor(p) { var st = S.stamps && S.stamps[p.org.inn]; return st && SIGNERS[p.org.inn] ? Promise.all([NunchiPDF.imageFromURL(st.sign), NunchiPDF.imageFromURL(st.stamp)]) : Promise.resolve(null); }
+  function stampsFor(p) { var st = S.stamps && S.stamps[p.org.inn]; return st && SIGNERS[p.org.inn] ? Promise.all([st.sign ? NunchiPDF.imageFromURL(st.sign) : null, st.stamp ? NunchiPDF.imageFromURL(st.stamp) : null]) : Promise.resolve(null); }
   function signer(p, who) { var sg = SIGNERS[p.org.inn]; var fio = who === 'acc' ? (p.acc_short || (sg && sg.short) || '') : (p.head_short || (sg && sg.short) || ''); return fio; }
 
   function pdfInvoice(p) {
@@ -456,13 +527,15 @@
         d.text('Товар отпускается по факту прихода денег на р/с Поставщика, самовывозом, при наличии доверенности и паспорта.', { size: 8.5, gap: 16 });
         d._room(200);
         var y = d.y;
-        d.text('Руководитель', { size: 10, bold: true, w: 100, gap: 0 });
-        d._line(150, y + 14, 300, y + 14, [0, 0, 0], 0.6); d.text(signer(p, 'head'), { x: 320, w: 160, size: 9.5, gap: 0 });
+        var ip = isIPorg(p.org);
+        d.text(ip ? 'Индивидуальный предприниматель' : 'Руководитель', { size: 10, bold: true, w: 170, gap: 0 });
+        var lx = ip ? 215 : 150;
+        d._line(lx, y + 14, lx + 150, y + 14, [0, 0, 0], 0.6); d.text(signer(p, 'head'), { x: lx + 170, w: 160, size: 9.5, gap: 0 });
         d.y = y + 40; var y2 = d.y;
-        d.text('Бухгалтер', { size: 10, bold: true, w: 100, gap: 0 });
-        d._line(150, y2 + 14, 300, y2 + 14, [0, 0, 0], 0.6); d.text(signer(p, 'acc'), { x: 320, w: 160, size: 9.5, gap: 0 });
+        if (!ip) { d.text('Бухгалтер', { size: 10, bold: true, w: 100, gap: 0 });
+          d._line(150, y2 + 14, 300, y2 + 14, [0, 0, 0], 0.6); d.text(signer(p, 'acc'), { x: 320, w: 160, size: 9.5, gap: 0 }); }
         d.y = y2 + 30;
-        if (im) { d.image(im[0], 160, y - 8, 90, 36); d.image(im[0], 160, y2 - 8, 90, 36); d.image(im[1], 190, y2 + 22, 110, 109); d.y = y2 + 140; }
+        if (im) { if (im[0]) { d.image(im[0], lx + 10, y - 12, 62, 30); if (!ip) d.image(im[0], 160, y2 - 8, 62, 30); } if (im[1]) d.image(im[1], 190, y2 + 22, 110, 109); d.y = y2 + 140; }
         return d.finish();
       });
     });
@@ -492,7 +565,7 @@
         var ship = (p.buyer.name || '') + (p.delivery_address ? ', ' + p.delivery_address : (p.buyer.address ? ', ' + p.buyer.address : ''));
         d.y = 56;
         d.grid({ x: 130, w: 432, size: 7, noBorders: true, pad: 0.7, cols: [{ w: 1.6 }, { w: 4 }, { w: 0.3 }], rows: [
-          ['Продавец:', { t: p.org.full ? (p.org.short || p.org.full) : p.org.name, bold: true }, '(2)'],
+          ['Продавец:', { t: isIP ? (p.org.full || p.org.name) : (p.org.full ? (p.org.short || p.org.full) : p.org.name), bold: true }, '(2)'],
           ['Адрес:', p.org.address || '', '(2а)'],
           ['ИНН/КПП продавца:', kppI(p.org), '(2б)'],
           ['Грузоотправитель и его адрес:', 'он же', '(3)'],
@@ -524,7 +597,7 @@
         var y = d.y + 4;
         // подписи руководителя / бухгалтера
         T('Документ составлен на', x0, y, 90, { size: 7.5 }); T('1 листе', x0, y + 9, 90, { size: 7.5 });
-        var hf = signer(p, 'head') || (sg ? sg.short : ''), af = signer(p, 'acc');
+        var hf = isIP && sg ? sg.short : (signer(p, 'head') || (sg ? sg.short : '')), af = signer(p, 'acc');
         T('Руководитель организации или иное уполномоченное лицо', 130, y, 135, { size: 7.5 });
         L(275, 350, y + 16); T(isIP ? '' : hf, 360, y + 8, 105, { size: 8 }); cap('(подпись)', 275, y + 18, 75); cap('(ф.и.о.)', 360, y + 18, 105);
         T('Главный бухгалтер или иное уполномоченное лицо', 495, y, 135, { size: 7.5 });
@@ -532,7 +605,7 @@
         var y1 = y + 28;
         T('Индивидуальный предприниматель или иное уполномоченное лицо', 130, y1, 135, { size: 7.5 });
         L(275, 350, y1 + 16); T(isIP ? hf : '', 360, y1 + 8, 105, { size: 8 }); cap('(подпись)', 275, y1 + 18, 75); cap('(ф.и.о.)', 360, y1 + 18, 105);
-        T('', 495, y1, 10, {}); cap('(основной государственный регистрационный номер индивидуального предпринимателя и дата присвоения такого номера)', 495, y1 + 8, 320);
+        T(isIP ? 'ОГРНИП ' + (p.org.ogrn || '______________') + ', дата регистрации « __ » ____________ 20__ г.' : '', 495, y1 - 5, 320, { size: 7.5, align: 'right' }); cap('(основной государственный регистрационный номер индивидуального предпринимателя и дата присвоения такого номера)', 495, y1 + 8, 320);
         L(495, 814, y1 + 6);
         // нижняя часть
         var y2 = y1 + 32;
@@ -556,17 +629,17 @@
         T('Ответственный за правильность оформления факта хозяйственной жизни', x0, y7, wl, { size: 7.5, bold: true }); T('Ответственный за правильность оформления факта хозяйственной жизни', xr, y7, wr, { size: 7.5, bold: true });
         var yy = y7 + 20;
         var sgn = function (xs, pos, fio) { L(xs + 4, xs + 100, yy); L(xs + 112, xs + 190, yy); L(xs + 202, xs + 300, yy);
-          if (pos) T(pos, xs + 4, yy - 9, 96, { size: 7.5 }); if (fio) T(fio, xs + 202, yy - 9, 98, { size: 8 });
+          if (pos) T(pos, xs + 4, yy - 8, 100, { size: pos.length > 20 ? 5.6 : 7.5 }); if (fio) T(fio, xs + 202, yy - 9, 98, { size: 8 });
           cap('(должность)', xs + 4, yy + 2, 96); cap('(подпись)', xs + 112, yy + 2, 78); cap('(ф.и.о.)', xs + 202, yy + 2, 98); };
-        sgn(x0, sg ? sg.pos : '', hf); sgn(xr, '', '');
+        sgn(x0, sg ? (isIP ? 'Индивидуальный предприниматель' : sg.pos) : '', hf); sgn(xr, '', '');
         T('[13]', x0 + wl - 22, yy - 9, 22, { size: 7.5, align: 'right' }); T('[18]', 792, yy - 9, 22, { size: 7.5, align: 'right' });
         var y8 = yy + 12;
         T('Наименование экономического субъекта – составителя документа (в т.ч. комиссионера / агента)', x0, y8, wl, { size: 7.5, bold: true }); T('Наименование экономического субъекта – составителя документа', xr, y8, wr, { size: 7.5, bold: true });
-        T((p.org.short || p.org.name) + ', ИНН/КПП ' + kppI(p.org), x0, y8 + 11, wl - 24, { size: 8 }); L(x0, x0 + wl - 24, y8 + 20); T('[14]', x0 + wl - 22, y8 + 11, 22, { size: 7.5, align: 'right' });
+        T((isIP ? (p.org.full || p.org.name) : (p.org.short || p.org.name)) + ', ИНН' + (isIP ? ' ' : '/КПП ') + kppI(p.org), x0, y8 + 11, wl - 24, { size: 8 }); L(x0, x0 + wl - 24, y8 + 20); T('[14]', x0 + wl - 22, y8 + 11, 22, { size: 7.5, align: 'right' });
         T((p.buyer.name || '') + ', ИНН/КПП ' + kppI(p.buyer), xr, y8 + 11, wr - 24, { size: 8 }); L(xr, xr + wr - 24, y8 + 20); T('[19]', 792, y8 + 11, 22, { size: 7.5, align: 'right' });
         cap('(может не заполняться при проставлении печати в М.П., может быть указан ИНН / КПП)', x0, y8 + 21, wl - 24); cap('(может не заполняться при проставлении печати в М.П., может быть указан ИНН / КПП)', xr, y8 + 21, wr - 24);
         T('М.П.', x0 + 60, y8 + 30, 40, { size: 8 }); T('М.П.', xr + 60, y8 + 30, 40, { size: 8 });
-        if (im) { d.image(im[0], 278, y - 6, 70, 28); d.image(im[0], x0 + 120, yy - 28, 64, 26); d.image(im[1], x0 + 90, y8 + 18, 50, 49); }
+        if (im) { var sy = isIP ? y1 : y; if (im[0]) { d.image(im[0], 284, sy - 8, 58, 28); d.image(im[0], x0 + 124, yy - 24, 52, 26); } if (im[1]) d.image(im[1], x0 + 90, y8 + 18, 50, 49); }
         return d.finish();
       });
     });
