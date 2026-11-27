@@ -65,6 +65,9 @@
       <div class="dc-chips" id="dc-orgrow" hidden></div>
       <div id="dc-unpaid"><div class="dc-muted">Загружаю…</div></div>
       <div class="dc-actions" id="dc-unpaid-act" hidden></div>
+      <h4>Счета на оплату (по неоплаченным УПД)</h4>
+      <div class="dc-muted">По каждому УПД выше — отдельный счёт на сумму долга. Нажмите PDF.</div>
+      <div id="dc-uinv"></div>
       <div class="dc-sum" id="dc-doc-title" hidden></div>
       <div class="dc-actions" id="dc-doc-act" hidden></div>
 
@@ -249,14 +252,15 @@
       var h = '';
       if (!r.docs.length) h += '<div class="dc-sum">Неоплаченных накладных нет.</div>';
       else {
-        h += '<div class="dc-tw"><table><tr><th>УПД</th><th>Дата</th><th class="r">Сумма</th><th class="r">Долг</th><th class="r">Дней</th><th></th></tr>' +
-          r.docs.map(function (d) { return '<tr><td>№ ' + esc(d.number) + '</td><td>' + dmy(d.date) + '</td><td class="r">' + (d.doc_sum == null ? '' : money(d.doc_sum)) + '</td><td class="r">' + money(d.debt) + '</td><td class="r">' + (d.days == null ? '' : d.days) + '</td><td><button class="dc-btn" type="button" data-kind="upd" data-did="' + esc(d.id) + '" style="margin:0;padding:5px 9px;font-size:12.5px">PDF</button></td></tr>'; }).join('') +
-          '<tr class="dc-tot"><td colspan="3">Итого к оплате</td><td class="r">' + money(r.total) + '</td><td></td><td></td></tr></table></div>';
+        h += '<div class="dc-tw"><table><tr><th>УПД</th><th>Дата</th><th class="r">Сумма</th><th class="r">Долг</th><th class="r">Дней</th></tr>' +
+          r.docs.map(function (d) { return '<tr><td>№ ' + esc(d.number) + '</td><td>' + dmy(d.date) + '</td><td class="r">' + (d.doc_sum == null ? '' : money(d.doc_sum)) + '</td><td class="r">' + money(d.debt) + '</td><td class="r">' + (d.days == null ? '' : d.days) + '</td></tr>'; }).join('') +
+          '<tr class="dc-tot"><td colspan="3">Итого к оплате</td><td class="r">' + money(r.total) + '</td><td></td></tr></table></div>';
       }
       if (r.advance > 0.005) h += '<div class="dc-sum">Аванс клиента (предоплата): ' + money(r.advance) + ' ₽</div>';
       (r.others || []).forEach(function (o) { h += '<div class="dc-warn">' + esc(o.label) + ': ' + money(o.debt) + ' ₽ (в список не входит)</div>'; });
       h += '<div class="dc-muted">Данные 1С на ' + esc(r.as_of) + '</div>';
       $('dc-unpaid').innerHTML = h;
+      $('dc-uinv').innerHTML = r.docs.length ? r.docs.map(function (d) { return '<div class="dc-urow"><div>Счёт по УПД № ' + esc(d.number) + ' от ' + dmy(d.date) + '<small>К оплате ' + money(d.debt) + ' ₽</small></div><button class="dc-btn" type="button" data-kind="uinv" data-did="' + esc(d.id) + '" data-debt="' + d.debt + '">PDF</button></div>'; }).join('') : '<div class="dc-muted">Нет неоплаченных УПД.</div>';
       if (r.docs.length) makeActions('dc-unpaid-act', function () { return pdfUnpaid(); }, 'Неоплаченные_УПД_' + file(S.client.name) + '.pdf');
     }).catch(function (e) { $('dc-unpaid').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; });
   }
@@ -319,13 +323,24 @@
       $('dc-inv').innerHTML = blk('Счета на оплату', 'invoice', r.invoices || []) + blk('УПД', 'upd', r.upd || []);
     }).catch(function (e) { $('dc-inv').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; }).then(function () { $('dc-inv-load').disabled = false; });
   }
+  function invFromUpd(u, debt) {
+    var p = JSON.parse(JSON.stringify(u)), tot = Number(u.total) || 0, num = u.number, dt = u.date;
+    p.number = 'Д-' + num; p.date = new Date().toISOString().slice(0, 10);
+    if (!(debt > 0) || Math.abs(debt - tot) < 0.005) { p.contract = p.contract || ''; return p; }
+    var k = tot ? debt / tot : 1;
+    p.lines = [{ n: 1, name: 'Оплата по УПД № ' + num + ' от ' + dmy(dt) + ' (остаток долга)', code: '', qty: 1, unit: 'усл.', price: debt, total: debt }];
+    p.qty = 1; p.total = debt; p.vat = u.with_vat ? Math.round(Number(u.vat) * k * 100) / 100 : 0;
+    return p;
+  }
   function openDoc(kind, did, btn) {
     var id = S.client.id; btn.disabled = true; var old = btn.textContent; btn.textContent = '…';
     $('dc-doc-title').hidden = true; show('dc-doc-act', false);
-    call('print', { client: id, kind: kind, id: did }).then(function (p) {
+    var isU = kind === 'uinv';
+    call('print', { client: id, kind: isU ? 'upd' : kind, id: did }).then(function (p) {
       if (S.client.id !== id) return;
-      $('dc-doc-title').textContent = (kind === 'invoice' ? 'Счёт № ' : 'УПД № ') + p.number + ' от ' + dmy(p.date); show('dc-doc-title', true);
-      makeActions('dc-doc-act', function () { return kind === 'invoice' ? pdfInvoice(p) : pdfUpd(p); }, (kind === 'invoice' ? 'Счет_' : 'УПД_') + file(p.number) + '_' + file(S.client.name) + '.pdf');
+      if (isU) p = invFromUpd(p, parseFloat(btn.getAttribute('data-debt')));
+      $('dc-doc-title').textContent = (kind === 'upd' ? 'УПД № ' : 'Счёт № ') + p.number + ' от ' + dmy(p.date); show('dc-doc-title', true);
+      makeActions('dc-doc-act', function () { return kind === 'upd' ? pdfUpd(p) : pdfInvoice(p); }, (kind === 'upd' ? 'УПД_' : 'Счет_') + file(p.number) + '_' + file(S.client.name) + '.pdf');
       $('dc-doc-act').scrollIntoView({ block: 'nearest' });
     }).catch(function (e) { $('dc-doc-title').textContent = e.message; show('dc-doc-title', true); }).then(function () { btn.disabled = false; btn.textContent = old; });
   }
@@ -708,7 +723,7 @@
   $('dc-chips').onclick = function (e) { var b = e.target.closest('[data-m]'); if (b) chip(Number(b.getAttribute('data-m'))); };
   $('dc-stamp').onchange = function () { var a = S.act; if (a) makeActions('dc-act-act', function () { return pdfAct(a); }, 'Акт_сверки_' + file(S.client.name) + '_' + a.from + '_' + a.to + '.pdf'); };
   $('dc-inv-load').onclick = loadInv;
-  $('dc-unpaid').onclick = function (e) { var b = e.target.closest('[data-did]'); if (b) openDoc(b.getAttribute('data-kind'), b.getAttribute('data-did'), b); };
+  $('dc-uinv').onclick = function (e) { var b = e.target.closest('[data-did]'); if (b) openDoc('uinv', b.getAttribute('data-did'), b); };
   $('dc-inv').onclick = function (e) { var b = e.target.closest('[data-did]'); if (b) openDoc(b.getAttribute('data-kind'), b.getAttribute('data-did'), b); };
   $('dc-orgrow').onclick = function (e) { var b = e.target.closest('[data-uorg]'); if (!b) return; S.org = b.getAttribute('data-uorg'); loadUnpaid(); };
   $('dc-actbtns').onclick = function (e) { var b = e.target.closest('[data-aorg]'); if (b) makeAct(b.getAttribute('data-aorg')); };
