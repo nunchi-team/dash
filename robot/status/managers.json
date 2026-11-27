@@ -7,7 +7,7 @@
  "contract_clients_excluded": 0,
  "last_week": {
   "week": "2026-11-23",
-  "week_end": "2026-11-27",
+  "week_end": "2026-11-28",
   "orders": "46",
   "points": "35",
   "points_ly": "46",
@@ -16,7 +16,7 @@
   "lost": "7",
   "active": "156",
   "active_ly": "167",
-  "at_risk": "37",
+  "at_risk": "39",
   "partial": "1"
  },
  "months": [
@@ -83,7 +83,7 @@
   {
    "month": "11",
    "pts26": "102",
-   "pts25": "103",
+   "pts25": "106",
    "partial": "1"
   }
  ],
@@ -97,9 +97,9 @@
  },
  "lists": {
   "active": 156,
-  "risk": 37,
+  "risk": 39,
   "lost": 7,
   "came": 5
  },
- "at": "27.11.2026 23:57"
+ "at": "28.11.2026 00:19"
 }
