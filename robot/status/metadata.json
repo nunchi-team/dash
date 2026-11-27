@@ -1,5 +1,5 @@
 {
  "errors": [
-  "metadata: HTTP Error 401: Unauthorized"
+  "metadata: HTTP Error 402: Payment required"
  ]
 }
