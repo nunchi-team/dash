@@ -17,6 +17,7 @@ input{width:100%;font-size:18px;padding:16px 18px;border:1.5px solid var(--line)
 input:focus{border-color:var(--fg)}
 button{width:100%;margin-top:14px;font-size:18px;font-weight:700;padding:16px;border:0;border-radius:18px;background:var(--fg);color:#fff;cursor:pointer}
 button:disabled{opacity:.55}
+.pw{position:relative}.pw input{padding-right:52px}.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:10px;border:0;background:none;color:var(--muted);line-height:0;border-radius:12px}
 .err{min-height:22px;margin-top:12px;color:var(--bad);font-size:15px}
 .foot{margin-top:28px;color:var(--muted);font-size:13px}
 </style></head>
@@ -25,7 +26,7 @@ button:disabled{opacity:.55}
   <h1 class="mark">Nunchi<sup>®</sup></h1>
   <p class="tag">Тонкое искусство продаж</p>
   <label for="p">Пароль команды</label>
-  <input id="p" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+  <div class="pw"><input id="p" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required><button type="button" class="eye" id="eye" aria-label="Показать пароль" title="Показать пароль"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path id="slash" d="M4 4l16 16" style="display:none"/></svg></button></div>
   <button id="b" type="submit">Войти</button>
   <div class="err" id="e" role="alert"></div>
   <p class="foot">Пароль нужен один раз — телефон его запомнит.</p>
@@ -59,6 +60,7 @@ button:disabled{opacity:.55}
     }
   }
   if (savedK || savedPw) { btn.disabled = true; btn.textContent = 'Открываю…'; auto(); }
+  document.getElementById('eye').addEventListener('click', function(){ var sh = inp.type === 'password'; inp.type = sh ? 'text' : 'password'; document.getElementById('slash').style.display = sh ? '' : 'none'; inp.focus(); });
   f.addEventListener('submit', function(ev){
     ev.preventDefault();
     var pw = inp.value.trim(); if (!pw) return;

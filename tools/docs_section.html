@@ -5,18 +5,22 @@
   <div id="dc-login">
     <label class="dc-l" for="dc-pin">Ваш личный PIN</label>
     <div class="dc-row">
-      <input id="dc-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+      <div class="dc-pw"><input id="dc-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN"><button class="dc-eye" id="dc-pineye" type="button" aria-label="Показать PIN">👁</button></div>
       <button class="dc-btn dc-main" id="dc-enter" type="button">Войти</button>
     </div>
     <div class="dc-err" id="dc-login-err" hidden></div>
   </div>
 
   <div id="dc-app" hidden>
-    <div class="dc-top"><span id="dc-who"></span><button class="dc-link" id="dc-exit" type="button">Выйти</button></div>
-
-    <div id="dc-adminbar" hidden><button class="dc-btn" id="dc-admin-btn" type="button">Администрирование ▾</button></div>
+    <div class="dc-top">
+      <div class="dc-user">
+        <button class="dc-ub" id="dc-userbtn" type="button" aria-haspopup="true" aria-expanded="false"><span class="dc-ava" id="dc-ava"></span><span class="dc-un"><b id="dc-who"></b><small id="dc-role"></small></span><span class="dc-chev">▾</span></button>
+        <div class="dc-menu" id="dc-menu" hidden><button class="dc-menuitem" id="dc-exit" type="button">Выйти из аккаунта</button></div>
+      </div>
+      <div id="dc-adminbar" hidden><button class="dc-btn" id="dc-admin-btn" type="button">Администрирование</button></div>
+    </div>
     <div id="dc-admin" hidden>
-      <button class="dc-link" id="dc-admin-close" type="button">▴ Свернуть администрирование</button>
+      <button class="dc-link" id="dc-admin-close" type="button">← Назад к клиентам</button>
       <h4>Менеджеры, PIN и пароль сайта</h4>
       <div id="dc-ulist"></div>
       <label class="dc-l" for="dc-emp">Добавить менеджера (выберите сотрудника из 1С)</label>
@@ -89,7 +93,18 @@
 #docs .dc-row .dc-btn{margin-top:0}
 #docs .dc-btn[disabled]{opacity:.5}
 #docs .dc-link{background:none;border:0;padding:6px 0;font:inherit;font-size:14px;color:var(--color-fg-muted);text-decoration:underline;cursor:pointer}
-#docs .dc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
+#docs .dc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--color-border-line);font-size:14px}
+#docs .dc-user{position:relative;min-width:0}
+#docs .dc-ub{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;font:inherit;color:var(--color-fg);cursor:pointer;text-align:left;max-width:100%}
+#docs .dc-ava{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--color-border-line);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;background:var(--color-bg)}
+#docs .dc-un{display:flex;flex-direction:column;line-height:1.25;min-width:0}#docs .dc-un b{font-weight:600;font-size:14.5px;overflow-wrap:anywhere}#docs .dc-un small{font-size:12px;color:var(--color-fg-muted)}
+#docs .dc-chev{font-size:12px;color:var(--color-fg-muted)}
+#docs .dc-menu{position:absolute;z-index:5;top:100%;left:0;margin-top:6px;min-width:190px;padding:6px;border:1px solid var(--color-border-line);border-radius:10px;background:var(--color-bg);box-shadow:0 4px 14px rgba(0,0,0,.12)}
+#docs .dc-menuitem{display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:9px 10px;border:0;border-radius:8px;background:none;color:#B4351F;cursor:pointer}
+#docs .dc-menuitem:hover{background:rgba(0,0,0,.05)}
+#docs #dc-adminbar .dc-btn{margin-top:0;font-size:13.5px;padding:8px 12px;white-space:nowrap}
+#docs .dc-pw{position:relative;flex:1 1 140px;min-width:120px}#docs .dc-pw input{padding-right:42px;width:100%}
+#docs .dc-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;padding:8px;font-size:16px;cursor:pointer;color:var(--color-fg-muted)}
 #docs .dc-err{color:var(--color-bad);font-size:14px;margin-top:8px}
 #docs .dc-item{display:block;width:100%;text-align:left;font:inherit;padding:10px 12px;margin-top:6px;border:1px solid var(--color-border-line);border-radius:10px;background:var(--color-bg);color:var(--color-fg);cursor:pointer}
 #docs .dc-item b{display:block;font-weight:600;font-size:14.5px}
@@ -182,7 +197,7 @@
   }
   function start() {
     show('dc-login', false); show('dc-app', true); applyView();
-    $('dc-who').textContent = S.name; show('dc-client', false); show('dc-pick', true); show('dc-admin', false); show('dc-adminbar', S.admin);
+    $('dc-who').textContent = S.name; $('dc-role').textContent = S.admin ? 'администратор' : 'менеджер'; $('dc-ava').textContent = String(S.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w.charAt(0).toUpperCase(); }).join(''); show('dc-menu', false); show('dc-client', false); show('dc-pick', true); show('dc-admin', false); show('dc-adminbar', S.admin);
     S.stamps = null; call('stamp').then(function (r) { S.stamps = r.stamps || {}; }).catch(function () { S.stamps = {}; });
     var cached = null; try { cached = JSON.parse(sessionStorage.getItem('nunchi_cl') || 'null'); } catch (e) {}
     if (cached && cached.t === S.token && cached.c) { S.clients = cached.c; S.orgs = cached.o || []; prep(); renderList(); }
@@ -718,6 +733,9 @@
   $('dc-enter').onclick = enter;
   $('dc-pin').onkeydown = function (e) { if (e.key === 'Enter') enter(); };
   $('dc-exit').onclick = function () { logout(false); };
+  $('dc-userbtn').onclick = function (e) { e.stopPropagation(); var m = $('dc-menu'); m.hidden = !m.hidden; $('dc-userbtn').setAttribute('aria-expanded', String(!m.hidden)); };
+  document.addEventListener('click', function (e) { var m = $('dc-menu'); if (m && !m.hidden && !e.target.closest('#dc-menu')) m.hidden = true; });
+  $('dc-pineye').onclick = function () { var i = $('dc-pin'); i.type = i.type === 'password' ? 'text' : 'password'; };
   var rq = 0; $('dc-q').oninput = function () { cancelAnimationFrame(rq); rq = requestAnimationFrame(renderList); };
   $('dc-list').onclick = function (e) { var b = e.target.closest('[data-id]'); if (b) pick(b.getAttribute('data-id')); };
   $('dc-back').onclick = function () { show('dc-client', false); show('dc-pick', true); window.scrollTo({ top: $('docs').offsetTop - 10 }); };
@@ -761,8 +779,8 @@
       renderUnas(r.users);
     }).catch(function (e) { $('dc-ulist').innerHTML = ''; aErr(e.message); });
   }
-  $('dc-admin-btn').onclick = function () { if (!$('dc-admin').hidden) { $('dc-admin-close').onclick(); return; } show('dc-admin', true); show('dc-pick', false); show('dc-client', false); $('dc-admin-btn').textContent = 'Администрирование ▴'; $('dc-pinbox').hidden = true; loadAdmin(); };
-  $('dc-admin-close').onclick = function () { show('dc-admin', false); show('dc-pick', true); show('dc-adminbar', S.admin); $('dc-admin-btn').textContent = 'Администрирование ▾'; };
+  $('dc-admin-btn').onclick = function () { if (!$('dc-admin').hidden) { $('dc-admin-close').onclick(); return; } show('dc-admin', true); show('dc-pick', false); show('dc-client', false); $('dc-admin-btn').textContent = '← Назад'; $('dc-pinbox').hidden = true; loadAdmin(); };
+  $('dc-admin-close').onclick = function () { show('dc-admin', false); show('dc-pick', true); show('dc-adminbar', S.admin); $('dc-admin-btn').textContent = 'Администрирование'; };
   $('dc-emp').onchange = function () { if (this.value) $('dc-newname').value = flipName(this.value); };
   $('dc-add').onclick = function () {
     aErr(''); var nm = $('dc-newname').value.trim(), emp = $('dc-emp').value;
