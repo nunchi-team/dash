@@ -1,6 +1,5 @@
 {
  "ok": false,
- "step": "ошибка",
- "error": "1С не ответила: HTTPError HTTP Error 402: Payment required",
- "at": "27.11.2026 22:41"
+ "step": "нет секретов: ADMIN_KEY",
+ "at": "27.11.2026 22:47"
 }
