@@ -37,7 +37,8 @@ jobs:
           ODATA_USER: ${{ secrets.ODATA_USER }}
           ODATA_PASS: ${{ secrets.ODATA_PASS }}
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
-        run: python3 tools/probe_1c.py; git rm -q robot/test/probe.flag
+        run: |
+          if [ -n "$ODATA_PASS" ] && [ -n "$SITE_PASSWORD" ]; then python3 tools/probe_1c.py && git rm -q robot/test/probe.flag; else echo 'секретов нет, разведка отложена'; fi
       - name: Сохранить результат
         run: |
           git config user.name "nunchi-robot"
