@@ -1,0 +1,42 @@
+name: Страница менеджеров из 1С
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'     # каждые 3 часа
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['tools/build_managers.py', 'tools/managers_template.html', 'tools/docs_section.html', '.github/workflows/managers.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: managers
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet cryptography
+      - name: Собрать страницу из данных 1С
+        env:
+          ODATA_USER: ${{ secrets.ODATA_USER }}
+          ODATA_PASS: ${{ secrets.ODATA_PASS }}
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          TARGET: test/index.html
+        run: python3 tools/build_managers.py
+      - name: Сохранить результат
+        run: |
+          git config user.name "nunchi-robot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for f in robot/status/managers.json test/index.html; do [ -e "$f" ] && git add -A "$f"; done
+          if ! git diff --cached --quiet; then
+            git commit -m "Страница менеджеров: обновление из 1С"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done
+          fi

@@ -1,0 +1,412 @@
+<section class="card" id="docs">
+  <h2>Документы для клиента</h2>
+  <p class="dc-muted">Акт сверки, неоплаченные УПД и счета — PDF, который можно сразу переслать клиенту.</p>
+
+  <div id="dc-login">
+    <label class="dc-l" for="dc-pin">Ваш личный PIN</label>
+    <div class="dc-row">
+      <input id="dc-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+      <button class="dc-btn dc-main" id="dc-enter" type="button">Войти</button>
+    </div>
+    <div class="dc-err" id="dc-login-err" hidden></div>
+  </div>
+
+  <div id="dc-app" hidden>
+    <div class="dc-top"><span id="dc-who"></span><button class="dc-link" id="dc-exit" type="button">Выйти</button></div>
+
+    <div id="dc-pick">
+      <input id="dc-q" type="search" placeholder="Найти клиента: название или ИНН" autocomplete="off">
+      <div class="dc-muted" id="dc-count"></div>
+      <div id="dc-list"></div>
+    </div>
+
+    <div id="dc-client" hidden>
+      <button class="dc-link" id="dc-back" type="button">← Другой клиент</button>
+      <h3 id="dc-cname"></h3>
+      <div class="dc-muted" id="dc-cinfo"></div>
+      <div id="dc-orgrow" hidden><label class="dc-l" for="dc-org">От какой организации</label><select id="dc-org"></select></div>
+
+      <h4>Неоплаченные УПД (накладные)</h4>
+      <div id="dc-unpaid"><div class="dc-muted">Загружаю…</div></div>
+      <div class="dc-actions" id="dc-unpaid-act" hidden></div>
+
+      <h4>Акт сверки</h4>
+      <div class="dc-dates">
+        <div><label class="dc-l" for="dc-from">С</label><input id="dc-from" type="date"></div>
+        <div><label class="dc-l" for="dc-to">По</label><input id="dc-to" type="date"></div>
+      </div>
+      <div class="dc-chips" id="dc-chips"></div>
+      <div class="dc-muted" id="dc-limit" hidden></div>
+      <button class="dc-btn dc-main" id="dc-make" type="button">Сформировать акт</button>
+      <div class="dc-err" id="dc-act-err" hidden></div>
+      <div id="dc-act"></div>
+      <label class="dc-chk" id="dc-stamp-row" hidden><input type="checkbox" id="dc-stamp" checked> С печатью и подписью</label>
+      <div class="dc-actions" id="dc-act-act" hidden></div>
+
+      <h4>Счета на оплату</h4>
+      <div class="dc-muted">За последние 6 месяцев.</div>
+      <button class="dc-btn" id="dc-inv-load" type="button">Показать счета</button>
+      <div id="dc-inv"></div>
+      <div class="dc-actions" id="dc-inv-act" hidden></div>
+    </div>
+  </div>
+</section>
+<style>
+#dash-root .mb #docs h3{margin:6px 0 0;font-size:17px}
+#dash-root .mb #docs h4{margin:18px 0 4px;font-size:15px;padding-top:12px;border-top:1px solid var(--color-border-line)}
+#docs .dc-muted{color:var(--color-fg-muted);font-size:13px}
+#docs .dc-l{display:block;font-size:12.5px;color:var(--color-fg-muted);margin:8px 0 4px}
+#docs input,#docs select{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--color-border-line);border-radius:10px;background:var(--color-bg);color:var(--color-fg)}
+#docs .dc-row{display:flex;gap:8px}#docs .dc-row input{flex:1;min-width:0}
+#docs .dc-btn{font:inherit;font-size:15px;padding:11px 16px;border-radius:10px;border:1px solid var(--color-border-line);background:var(--color-bg);color:var(--color-fg);cursor:pointer;margin-top:8px}
+#docs .dc-main{background:var(--color-fg);color:var(--color-bg);border-color:var(--color-fg)}
+#docs .dc-row .dc-btn{margin-top:0}
+#docs .dc-btn[disabled]{opacity:.5}
+#docs .dc-link{background:none;border:0;padding:6px 0;font:inherit;font-size:14px;color:var(--color-fg-muted);text-decoration:underline;cursor:pointer}
+#docs .dc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
+#docs .dc-err{color:var(--color-bad);font-size:14px;margin-top:8px}
+#docs .dc-item{display:block;width:100%;text-align:left;font:inherit;padding:10px 12px;margin-top:6px;border:1px solid var(--color-border-line);border-radius:10px;background:var(--color-bg);color:var(--color-fg);cursor:pointer}
+#docs .dc-item b{display:block;font-weight:600;font-size:14.5px}
+#docs .dc-item span{font-size:12.5px;color:var(--color-fg-muted)}
+#docs .dc-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#docs .dc-dates>div{min-width:0}#docs input[type=date]{min-width:0;-webkit-appearance:none;appearance:none;min-height:44px}
+#docs td:first-child{white-space:nowrap}
+#docs .dc-chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px}#docs .dc-chk input{width:auto;min-height:0}
+#docs .dc-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+#docs .dc-chips button{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--color-border-line);border-radius:99px;background:var(--color-bg);color:var(--color-fg);cursor:pointer}
+#docs .dc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+#docs .dc-tw{overflow-x:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
+#docs table{border-collapse:collapse;width:100%;font-size:13px}
+#docs th,#docs td{padding:6px 6px;border-bottom:1px solid var(--color-border-line);text-align:left;vertical-align:top}
+#docs th{font-weight:600;font-size:12px;color:var(--color-fg-muted)}
+#docs td.r,#docs th.r{text-align:right;white-space:nowrap}
+#docs tr.dc-tot td{font-weight:600}
+#docs .dc-sum{margin-top:8px;font-size:14px;line-height:1.5}
+#docs .dc-warn{margin-top:6px;font-size:12.5px;color:var(--color-warn)}
+</style>
+<script>
+(function () {
+  var API = window.NUNCHI_API || 'https://api.nunchidrink.ru/nunchi-api/api.php';
+  var LIB = window.NUNCHI_LIB || '/lib/';
+  var $ = function (id) { return document.getElementById(id); };
+  var S = { token: '', name: '', all: false, maxMonths: null, clients: [], client: null, org: '', unpaid: null, act: null, inv: null, fonts: null };
+  try { var sv = JSON.parse(sessionStorage.getItem('nunchi_docs') || 'null'); if (sv && sv.token) { S.token = sv.token; S.name = sv.name; S.all = sv.all; S.maxMonths = sv.maxMonths; } } catch (e) {}
+
+  function show(el, on) { if (typeof el === 'string') el = $(el); el.hidden = !on; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function money(n) { n = Number(n) || 0; var neg = n < 0; var s = Math.abs(n).toFixed(2).replace('.', ','); s = s.replace(/\B(?=(\d{3})+(?!\d))/g, ' '); return (neg ? '−' : '') + s; }
+  function dmy(d) { return d ? d.slice(8, 10) + '.' + d.slice(5, 7) + '.' + d.slice(0, 4) : ''; }
+  function iso(dt) { var m = dt.getMonth() + 1, d = dt.getDate(); return dt.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d; }
+  function setErr(id, msg) { var e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
+  function file(s) { return String(s).replace(/[^\wА-Яа-яЁё.-]+/g, '_').slice(0, 60); }
+
+  function call(action, params, post) {
+    var q = [];
+    var all = Object.assign({ action: action }, params || {});
+    if (S.token && action !== 'login') all.t = S.token;
+    for (var k in all) q.push(encodeURIComponent(k) + '=' + encodeURIComponent(all[k]));
+    var p = post ? fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: q.join('&') })
+                 : fetch(API + '?' + q.join('&'));
+    return p.then(function (r) { return r.json().catch(function () { return { error: 'Сервер ответил непонятно' }; }).then(function (j) { j._status = r.status; return j; }); })
+      .then(function (j) {
+        if (j._status === 401 && action !== 'login') { logout(true); throw new Error('Войдите заново'); }
+        if (j.error) { var e = new Error(j.error); throw e; }
+        return j;
+      }, function () { throw new Error('Нет связи с сервером. Проверьте интернет.'); });
+  }
+
+  // ---------- вход ----------
+  function logout(keepMsg) {
+    S.token = ''; try { sessionStorage.removeItem('nunchi_docs'); } catch (e) {}
+    $('dc-pin').value = ''; show('dc-app', false); show('dc-login', true);
+    if (keepMsg) setErr('dc-login-err', 'Сессия закончилась. Введите PIN ещё раз.');
+  }
+  function enter() {
+    var pin = $('dc-pin').value.trim(); if (!pin) return;
+    $('dc-enter').disabled = true; setErr('dc-login-err', '');
+    call('login', { pin: pin }, true).then(function (r) {
+      S.token = r.token; S.name = r.name; S.all = !!r.all; S.maxMonths = r.max_months || null;
+      try { sessionStorage.setItem('nunchi_docs', JSON.stringify({ token: S.token, name: S.name, all: S.all, maxMonths: S.maxMonths })); } catch (e) {}
+      $('dc-pin').value = ''; start();
+    }).catch(function (e) { setErr('dc-login-err', e.message); }).then(function () { $('dc-enter').disabled = false; });
+  }
+  function start() {
+    show('dc-login', false); show('dc-app', true);
+    $('dc-who').textContent = S.name; show('dc-client', false); show('dc-pick', true);
+    $('dc-list').innerHTML = '<div class="dc-muted">Загружаю список клиентов…</div>';
+    call('clients').then(function (r) {
+      S.clients = r.clients || []; S.all = !!r.all; S.maxMonths = r.max_months || null; renderList();
+    }).catch(function (e) { $('dc-list').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; });
+  }
+
+  // ---------- список клиентов ----------
+  function renderList() {
+    var q = $('dc-q').value.trim().toLowerCase().replace(/ё/g, 'е'), qd = q.replace(/\D/g, '');
+    if (!q) { $('dc-count').textContent = 'Клиентов в списке: ' + S.clients.length + '. Начните вводить название (или ИНН) — список появится сразу.'; $('dc-list').innerHTML = ''; return; }
+    var r1 = [], r2 = [], r3 = [];
+    S.clients.forEach(function (c) {
+      var n = c.name.toLowerCase().replace(/ё/g, 'е');
+      if (n.indexOf(q) === 0) r1.push(c);
+      else if (n.indexOf(' ' + q) >= 0 || n.indexOf('"' + q) >= 0 || n.indexOf('«' + q) >= 0) r2.push(c);
+      else if ((q.length >= 3 && n.indexOf(q) >= 0) || (qd.length >= 3 && String(c.inn).indexOf(qd) >= 0)) r3.push(c);
+    });
+    var f = r1.concat(r2, r3), shown = f.slice(0, 30);
+    $('dc-count').textContent = f.length ? 'Найдено: ' + f.length + (f.length > shown.length ? ' (показаны первые ' + shown.length + ', допишите ещё букву)' : '') : 'Ничего не найдено';
+    $('dc-list').innerHTML = shown.map(function (c) {
+      var info = [c.inn ? 'ИНН ' + c.inn : '', c.debt > 0.005 ? 'долг ' + money(c.debt) + ' ₽' : '', c.last ? 'посл. отгрузка ' + dmy(c.last) : '', S.all && c.manager ? c.manager : ''].filter(Boolean).join(' · ');
+      return '<button class="dc-item" type="button" data-id="' + esc(c.id) + '"><b>' + esc(c.name) + '</b><span>' + esc(info) + '</span></button>';
+    }).join('');
+  }
+
+  // ---------- выбор клиента ----------
+  function pick(id) {
+    var c = S.clients.filter(function (x) { return x.id === id; })[0]; if (!c) return;
+    S.client = c; S.org = ''; S.unpaid = null; S.act = null; S.inv = null;
+    show('dc-pick', false); show('dc-client', true);
+    $('dc-cname').textContent = c.name;
+    $('dc-cinfo').textContent = [c.inn ? 'ИНН ' + c.inn : '', S.all && c.manager ? 'менеджер: ' + c.manager : ''].filter(Boolean).join(' · ');
+    $('dc-act').innerHTML = ''; show('dc-act-act', false); show('dc-stamp-row', false); setErr('dc-act-err', '');
+    $('dc-inv').innerHTML = ''; show('dc-inv-act', false); show('dc-inv-load', true);
+    show('dc-orgrow', false);
+    var to = new Date(), from = new Date(); from.setMonth(from.getMonth() - 3); from.setDate(from.getDate() + 1);
+    $('dc-to').value = iso(to); $('dc-from').value = iso(from);
+    buildChips(); loadUnpaid();
+  }
+  function buildChips() {
+    var list = [['1 мес', 1], ['3 мес', 3], ['6 мес', 6], ['12 мес', 12]];
+    if (!S.maxMonths) list.push(['С начала года', 0]);
+    $('dc-chips').innerHTML = list.map(function (x) { return '<button type="button" data-m="' + x[1] + '">' + x[0] + '</button>'; }).join('');
+    var l = $('dc-limit'); l.hidden = !S.maxMonths; if (S.maxMonths) l.textContent = 'Акт можно сформировать за период не более ' + S.maxMonths + ' месяцев.';
+  }
+  function chip(m) {
+    var to = new Date(), from = new Date();
+    if (m === 0) from = new Date(to.getFullYear(), 0, 1); else { from.setMonth(from.getMonth() - m); from.setDate(from.getDate() + 1); }
+    $('dc-from').value = iso(from); $('dc-to').value = iso(to);
+  }
+
+  // ---------- неоплаченные ----------
+  function loadUnpaid() {
+    $('dc-unpaid').innerHTML = '<div class="dc-muted">Загружаю…</div>'; show('dc-unpaid-act', false);
+    var id = S.client.id;
+    call('unpaid', { client: id, org: S.org }).then(function (r) {
+      if (S.client.id !== id) return;
+      S.unpaid = r; fillOrgs(r.organizations);
+      var h = '';
+      if (!r.docs.length) h += '<div class="dc-sum">Неоплаченных накладных нет.</div>';
+      else {
+        h += '<div class="dc-tw"><table><tr><th>УПД</th><th>Дата</th><th class="r">Сумма</th><th class="r">Долг</th><th class="r">Дней</th></tr>' +
+          r.docs.map(function (d) { return '<tr><td>№ ' + esc(d.number) + '</td><td>' + dmy(d.date) + '</td><td class="r">' + (d.doc_sum == null ? '' : money(d.doc_sum)) + '</td><td class="r">' + money(d.debt) + '</td><td class="r">' + (d.days == null ? '' : d.days) + '</td></tr>'; }).join('') +
+          '<tr class="dc-tot"><td colspan="3">Итого к оплате</td><td class="r">' + money(r.total) + '</td><td></td></tr></table></div>';
+      }
+      if (r.advance > 0.005) h += '<div class="dc-sum">Аванс клиента (предоплата): ' + money(r.advance) + ' ₽</div>';
+      (r.others || []).forEach(function (o) { h += '<div class="dc-warn">' + esc(o.label) + ': ' + money(o.debt) + ' ₽ (в список не входит)</div>'; });
+      h += '<div class="dc-muted">Данные 1С на ' + esc(r.as_of) + '</div>';
+      $('dc-unpaid').innerHTML = h;
+      if (r.docs.length) makeActions('dc-unpaid-act', function () { return pdfUnpaid(); }, 'Неоплаченные_УПД_' + file(S.client.name) + '.pdf');
+    }).catch(function (e) { $('dc-unpaid').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; });
+  }
+  function fillOrgs(orgs) {
+    if (!orgs || orgs.length < 2) { show('dc-orgrow', false); return; }
+    var sel = $('dc-org'); sel.innerHTML = orgs.map(function (o) { return '<option value="' + esc(o.id) + '"' + (o.id === S.org ? ' selected' : '') + '>' + esc(o.name) + '</option>'; }).join('');
+    show('dc-orgrow', true);
+  }
+
+  // ---------- акт ----------
+  function makeAct() {
+    var from = $('dc-from').value, to = $('dc-to').value; setErr('dc-act-err', '');
+    if (!from || !to) return setErr('dc-act-err', 'Укажите даты «С» и «По».');
+    if (from > to) return setErr('dc-act-err', 'Дата «С» не может быть позже даты «По».');
+    if (S.maxMonths) { var lim = new Date(from + 'T00:00:00'); lim.setMonth(lim.getMonth() + S.maxMonths); lim.setDate(lim.getDate() - 1); if (to > iso(lim)) return setErr('dc-act-err', 'Период не больше ' + S.maxMonths + ' месяцев.'); }
+    $('dc-make').disabled = true; $('dc-act').innerHTML = '<div class="dc-muted">Формирую акт… это может занять до минуты.</div>'; show('dc-act-act', false);
+    var id = S.client.id;
+    call('act', { client: id, from: from, to: to, org: S.org }).then(function (a) {
+      if (S.client.id !== id) return;
+      S.act = a; if (!S.org) S.org = a.org.id; fillOrgsAct(a.organizations);
+      var h = '<div class="dc-sum">Сальдо на ' + dmy(a.from) + ': <b>' + money(a.opening) + ' ₽</b></div><div class="dc-tw"><table><tr><th>Дата</th><th>Документ</th><th class="r">Дебет</th><th class="r">Кредит</th></tr>' +
+        a.lines.map(function (l) { return '<tr><td>' + dmy(l.date) + '</td><td>' + esc(l.doc) + '</td><td class="r">' + (l.debit ? money(l.debit) : '') + '</td><td class="r">' + (l.credit ? money(l.credit) : '') + '</td></tr>'; }).join('') +
+        '<tr class="dc-tot"><td colspan="2">Обороты за период</td><td class="r">' + money(a.debit) + '</td><td class="r">' + money(a.credit) + '</td></tr></table></div>' +
+        '<div class="dc-sum">Сальдо на ' + dmy(a.to) + ': <b>' + money(a.closing) + ' ₽</b><br>' + saldoText(a) + '</div>';
+      (a.warnings || []).forEach(function (w) { h += '<div class="dc-warn">' + esc(w) + '</div>'; });
+      $('dc-act').innerHTML = h;
+      show('dc-stamp-row', wantStamp(a));
+      makeActions('dc-act-act', function () { return pdfAct(a); }, 'Акт_сверки_' + file(S.client.name) + '_' + a.from + '_' + a.to + '.pdf');
+    }).catch(function (e) { $('dc-act').innerHTML = ''; setErr('dc-act-err', e.message); }).then(function () { $('dc-make').disabled = false; });
+  }
+  function fillOrgsAct(orgs) { if (orgs && orgs.length > 1 && $('dc-orgrow').hidden) { S.unpaid = S.unpaid || {}; S.unpaid.organizations = orgs; fillOrgs(orgs); } }
+  function saldoText(a) {
+    var me = a.org.name || 'Nunchi', cl = S.client.name;
+    if (a.closing > 0.004) return 'Задолженность в пользу ' + me + ': ' + money(a.closing) + ' ₽';
+    if (a.closing < -0.004) return 'Задолженность в пользу ' + cl + ': ' + money(-a.closing) + ' ₽';
+    return 'Взаимных задолженностей нет';
+  }
+
+  // ---------- счета ----------
+  function loadInv() {
+    $('dc-inv-load').disabled = true; var id = S.client.id;
+    call('invoices', { client: id }).then(function (r) {
+      if (S.client.id !== id) return; S.inv = r.invoices; show('dc-inv-load', false);
+      if (!S.inv.length) { $('dc-inv').innerHTML = '<div class="dc-sum">Счетов за 6 месяцев нет.</div>'; return; }
+      $('dc-inv').innerHTML = '<div class="dc-tw"><table><tr><th>Счёт</th><th>Дата</th><th class="r">Сумма</th></tr>' +
+        S.inv.map(function (d) { return '<tr><td>№ ' + esc(d.number) + '</td><td>' + dmy(d.date) + '</td><td class="r">' + money(d.sum) + '</td></tr>'; }).join('') + '</table></div>';
+      makeActions('dc-inv-act', function () { return pdfInv(); }, 'Счета_' + file(S.client.name) + '.pdf');
+    }).catch(function (e) { $('dc-inv').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; }).then(function () { $('dc-inv-load').disabled = false; });
+  }
+
+  // ---------- PDF ----------
+  function getFonts() { return S.fonts ? Promise.resolve(S.fonts) : NunchiPDF.loadFonts(LIB).then(function (f) { S.fonts = f; return f; }); }
+  function ensurePdfLib() {
+    if (window.NunchiPDF) return Promise.resolve();
+    return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = LIB + 'pdf.js'; s.onload = ok; s.onerror = function () { bad(new Error('Не загрузился модуль PDF')); }; document.head.appendChild(s); });
+  }
+  function newDoc() { return ensurePdfLib().then(getFonts).then(function (f) { return new NunchiPDF(f, { footer: 'Nunchi · сформировано ' + new Date().toLocaleDateString('ru-RU') }); }); }
+  function head(d, title, sub) {
+    d.text(title, { size: 15, bold: true, gap: 4 });
+    sub.forEach(function (s) { d.text(s, { size: 10, gap: 2 }); });
+    d.space(6);
+  }
+  function orgTitle(orgObj) { return orgObj && (orgObj.full || orgObj.name) ? (orgObj.full || orgObj.name) + (orgObj.inn ? ', ИНН ' + orgObj.inn : '') : 'Nunchi'; }
+  function pdfUnpaid() {
+    var r = S.unpaid, c = S.client;
+    return newDoc().then(function (d) {
+      var orgName = ''; (r.organizations || []).forEach(function (o) { if (o.id === S.org) orgName = o.name; });
+      head(d, 'Неоплаченные УПД (накладные)', [(c.full || c.name) + (c.inn ? ', ИНН ' + c.inn : ''), 'По данным учёта на ' + r.as_of + (orgName ? ' · ' + orgName : '')]);
+      d.table({ cols: [{ w: 1.3 }, { w: 1.2 }, { w: 1.5, align: 'right' }, { w: 1.5, align: 'right' }, { w: 0.8, align: 'right' }], head: ['УПД №', 'Дата', 'Сумма, ₽', 'К оплате, ₽', 'Дней'],
+        rows: r.docs.map(function (x) { return ['№ ' + x.number, dmy(x.date), x.doc_sum == null ? '' : money(x.doc_sum), money(x.debt), x.days == null ? '' : String(x.days)]; })
+          .concat([['Итого к оплате', '', '', money(r.total), '']]), boldRows: [r.docs.length], fillRows: [r.docs.length], size: 9.5 });
+      if (r.advance > 0.005) d.text('Аванс клиента (предоплата): ' + money(r.advance) + ' ₽', { size: 10 });
+      return d.finish();
+    });
+  }
+  function pdfInv() {
+    var c = S.client;
+    return newDoc().then(function (d) {
+      head(d, 'Счета на оплату', [(c.full || c.name) + (c.inn ? ', ИНН ' + c.inn : ''), 'За последние 6 месяцев']);
+      d.table({ cols: [{ w: 1.5 }, { w: 1.3 }, { w: 1.7, align: 'right' }], head: ['Счёт №', 'Дата', 'Сумма, ₽'], rows: S.inv.map(function (x) { return ['№ ' + x.number, dmy(x.date), money(x.sum)]; }), size: 9.5 });
+      return d.finish();
+    });
+  }
+  // ---- акт сверки по образцу 1С (альбомный лист, две таблицы) ----
+  var IMG = { sign: '__SIGN__', stamp: '__STAMP__' };
+  var SIGNERS = { '5047272224': { pos: 'Генеральный Директор', fio: 'Хаушабо Сергей Сергеевич', short: 'Хаушабо С. С.' } };
+  var MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+  function qname(full, name) {
+    var t = (full || '').trim();
+    if (t) return t.replace(/Общество с ограниченной ответственностью/i, 'ООО').replace(/Индивидуальный предприниматель/i, 'ИП').replace(/Акционерное общество/i, 'АО').replace(/[«»]/g, '"');
+    t = (name || '').trim().replace(/[«»]/g, '"');
+    var m = t.match(/^(.*?)\s+(ООО|ИП|АО|ЗАО|ПАО)$/); return m ? m[2] + ' ' + (m[1].charAt(0) === '"' ? m[1] : '"' + m[1] + '"') : t;
+  }
+  function periodName(f, t) {
+    var a = new Date(f + 'T00:00:00'), b = new Date(t + 'T00:00:00');
+    if (a.getDate() === 1 && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear() && new Date(b.getFullYear(), b.getMonth() + 1, 0).getDate() === b.getDate()) return MONTHS[a.getMonth()] + ' ' + a.getFullYear() + ' г.';
+    return 'с ' + dmy(f) + ' по ' + dmy(t);
+  }
+  function words(n) {
+    var u1 = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+    var u2 = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+    var h = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+    function tri(x, fem) { var o = [], hh = Math.floor(x / 100), r = x % 100; if (hh) o.push(h[hh]); if (r < 20) { var w = u1[r]; if (fem && r === 1) w = 'одна'; if (fem && r === 2) w = 'две'; if (w) o.push(w); } else { o.push(u2[Math.floor(r / 10)]); var d = r % 10; if (d) o.push(fem && d === 1 ? 'одна' : fem && d === 2 ? 'две' : u1[d]); } return o.join(' '); }
+    function form(x, a, b, c) { x = x % 100; if (x > 10 && x < 20) return c; x = x % 10; return x === 1 ? a : x >= 2 && x <= 4 ? b : c; }
+    n = Math.abs(n); var rub = Math.floor(n + 1e-9), kop = Math.round((n - rub) * 100); if (kop === 100) { rub++; kop = 0; }
+    var parts = [], mil = Math.floor(rub / 1000000), th = Math.floor(rub / 1000) % 1000, rest = rub % 1000;
+    if (mil) parts.push(tri(mil, false) + ' ' + form(mil, 'миллион', 'миллиона', 'миллионов'));
+    if (th) parts.push(tri(th, true) + ' ' + form(th, 'тысяча', 'тысячи', 'тысяч'));
+    if (rest || !rub) parts.push(rest ? tri(rest, false) : 'ноль');
+    var s = parts.join(' ') + ' ' + form(rub, 'рубль', 'рубля', 'рублей') + ' ' + String(kop).padStart(2, '0') + ' ' + form(kop, 'копейка', 'копейки', 'копеек');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function sd(s) { return s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(2, 4) : ''; }
+  function wantStamp(a) { return a.org && SIGNERS[a.org.inn] && IMG.stamp.length > 100; }
+  function pdfAct(a) {
+    var c = Object.assign({}, S.client, a.client || {});
+    var withStamp = wantStamp(a) && $('dc-stamp').checked, sg = SIGNERS[a.org.inn] || null;
+    var A = qname(a.org.full, a.org.name), B = qname(c.full, c.name);
+    return newDoc().then(function (d0) {
+      var d = new NunchiPDF(S.fonts, { landscape: true, margin: 40, footer: 'Nunchi · сформировано ' + new Date().toLocaleDateString('ru-RU') });
+      var imgs = withStamp ? Promise.all([NunchiPDF.imageFromURL(IMG.sign), NunchiPDF.imageFromURL(IMG.stamp)]) : Promise.resolve(null);
+      return imgs.then(function (im) {
+        var W = d.PW - 80;
+        d.text('Акт сверки', { size: 15, bold: true, align: 'center', gap: 4 });
+        d.text('взаимных расчетов за период: ' + periodName(a.from, a.to), { size: 10.5, align: 'center', gap: 1 });
+        d.text('между ' + A + (a.org.inn ? ' (ИНН ' + a.org.inn + ')' : ''), { size: 10.5, align: 'center', gap: 1 });
+        d.text('и ' + B + (c.inn ? ' (ИНН ' + c.inn + ')' : ''), { size: 10.5, align: 'center', gap: 1 });
+        var k = a.contract;
+        if (k && (k.number || k.name)) d.text((k.number ? 'по договору № ' + k.number + (k.date ? ' от ' + dmy(k.date) : '') : k.name) + ' (руб.)', { size: 10.5, align: 'center', gap: 1 });
+        else d.text('(руб.)', { size: 10.5, align: 'center', gap: 1 });
+        d.space(10);
+        d.text('Мы, нижеподписавшиеся, ' + (sg ? sg.pos + ' ' + A + ' ' + sg.fio : '________________ ' + A + ' ________________') + ', с одной стороны, и ________________ ' + B + ' _______________________, с другой стороны, составили настоящий акт сверки в том, что состояние взаимных расчетов по данным учета следующее:', { size: 10, gap: 8 });
+        var nob = { t: '', nob: true };
+        var open = a.opening, clo = a.closing;
+        var dc = function (x) { return x > 0.004 ? money(x) : ''; };
+        var rows = [
+          [{ t: 'По данным ' + A + ', руб.', span: 4 }, nob, { t: 'По данным ' + B + ', руб.', span: 4 }],
+          ['Дата', 'Документ', 'Дебет', 'Кредит', nob, 'Дата', 'Документ', 'Дебет', 'Кредит'],
+          ['', 'Сальдо начальное', dc(open), dc(-open), nob, '', 'Сальдо начальное', dc(-open), dc(open)]];
+        a.lines.forEach(function (l) {
+          rows.push([sd(l.date), l.doc, l.debit ? money(l.debit) : '', l.credit ? money(l.credit) : '', nob,
+            sd(l.date), l.doc.replace(/^Продажа/, 'Приход').replace(/^Корректировка реализации/, 'Корректировка'), l.credit ? money(l.credit) : '', l.debit ? money(l.debit) : '']);
+        });
+        rows.push(['', 'Обороты за период', money(a.debit), money(a.credit), nob, '', 'Обороты за период', money(a.credit), money(a.debit)]);
+        rows.push(['', 'Сальдо конечное', dc(clo), dc(-clo), nob, '', 'Сальдо конечное', dc(-clo), dc(clo)]);
+        var n = rows.length;
+        d.grid({ cols: [{ w: 0.9, align: 'center' }, { w: 3.2 }, { w: 1.2, align: 'right' }, { w: 1.2, align: 'right' }, { w: 0.12, gap: true }, { w: 0.9, align: 'center' }, { w: 3.2 }, { w: 1.2, align: 'right' }, { w: 1.2, align: 'right' }],
+          rows: rows, boldRows: [1, 2, n - 2, n - 1], size: 8.5 });
+        d.space(10);
+        var who = clo > 0.004 ? A : clo < -0.004 ? B : '';
+        var verdict = who ? 'задолженность в пользу ' + who + ' ' + money(Math.abs(clo)) + ' руб. (' + words(clo) + ').' : 'задолженность отсутствует.';
+        var half = (W - 20) / 2, y0 = d.y;
+        d._room(210); y0 = d.y;
+        d.text('По данным ' + A, { x: 40, w: half, size: 9.5, gap: 1 });
+        d.text('на ' + dmy(a.to) + ' ' + verdict, { x: 40, w: half, size: 9.5, bold: true, gap: 8 });
+        var yl = d.y; d.y = y0;
+        d.text('По данным ' + B, { x: 40 + half + 20, w: half, size: 9.5, gap: 1 });
+        d.text('на ' + dmy(a.to) + ' ' + verdict, { x: 40 + half + 20, w: half, size: 9.5, bold: true, gap: 8 });
+        d.y = Math.max(yl, d.y) + 6; y0 = d.y;
+        d.text('От ' + A, { x: 40, w: half, size: 9.5, gap: 8 });
+        d.text(sg ? sg.pos : '________________', { x: 40, w: half, size: 9.5, gap: 20 });
+        var ys = d.y;
+        d._line(40, ys, 40 + half - 140, ys, [0, 0, 0], 0.6);
+        d.text('(' + (sg ? sg.short : '_______________________') + ')', { x: 40 + half - 135, w: 130, size: 9, gap: 4 });
+        d.text('М.П.', { x: 40, w: half, size: 9.5, gap: 2 });
+        var yEnd = d.y; d.y = y0;
+        d.text('От ' + B, { x: 40 + half + 20, w: half, size: 9.5, gap: 8 });
+        d.text('________________', { x: 40 + half + 20, w: half, size: 9.5, gap: 20 });
+        d._line(40 + half + 20, ys, 40 + 2 * half - 120, ys, [0, 0, 0], 0.6);
+        d.text('(_______________________)', { x: 40 + 2 * half - 115, w: 135, size: 9, gap: 4 });
+        d.text('М.П.', { x: 40 + half + 20, w: half, size: 9.5, gap: 2 });
+        if (im) { d.image(im[0], 40 + half - 260, ys - 34, 54, 44); d.image(im[1], 80, ys + 14, 120, 119); }
+        return d.finish();
+      });
+    });
+  }
+
+  // кнопки «Поделиться» / «Открыть»: PDF готовится заранее, чтобы «Поделиться» сработало сразу по нажатию
+  function makeActions(boxId, builder, filename) {
+    var box = $(boxId); show(box, true);
+    box.innerHTML = '<div class="dc-muted">Готовлю PDF…</div>';
+    builder().then(function (blob) {
+      var f; try { f = new File([blob], filename, { type: 'application/pdf' }); } catch (e) { f = null; }
+      var canShare = f && navigator.canShare && navigator.canShare({ files: [f] });
+      var url = URL.createObjectURL(blob);
+      box.innerHTML = (canShare ? '<button class="dc-btn dc-main" type="button" data-do="share">Поделиться PDF</button>' : '') +
+        '<a class="dc-btn' + (canShare ? '' : ' dc-main') + '" href="' + url + '" download="' + esc(filename) + '" style="text-decoration:none;display:inline-block">Скачать PDF</a>';
+      var b = box.querySelector('[data-do=share]');
+      if (b) b.onclick = function () { navigator.share({ files: [f], title: filename }).catch(function () {}); };
+    }).catch(function (e) { box.innerHTML = '<div class="dc-err">PDF не получился: ' + esc(e.message) + '</div>'; });
+  }
+
+  // ---------- события ----------
+  $('dc-enter').onclick = enter;
+  $('dc-pin').onkeydown = function (e) { if (e.key === 'Enter') enter(); };
+  $('dc-exit').onclick = function () { logout(false); };
+  $('dc-q').oninput = renderList;
+  $('dc-list').onclick = function (e) { var b = e.target.closest('[data-id]'); if (b) pick(b.getAttribute('data-id')); };
+  $('dc-back').onclick = function () { show('dc-client', false); show('dc-pick', true); window.scrollTo({ top: $('docs').offsetTop - 10 }); };
+  $('dc-chips').onclick = function (e) { var b = e.target.closest('[data-m]'); if (b) chip(Number(b.getAttribute('data-m'))); };
+  $('dc-make').onclick = makeAct;
+  $('dc-stamp').onchange = function () { var a = S.act; if (a) makeActions('dc-act-act', function () { return pdfAct(a); }, 'Акт_сверки_' + file(S.client.name) + '_' + a.from + '_' + a.to + '.pdf'); };
+  $('dc-inv-load').onclick = loadInv;
+  $('dc-org').onchange = function () { S.org = this.value; S.act = null; $('dc-act').innerHTML = ''; show('dc-act-act', false); loadUnpaid(); };
+
+  if (S.token) start();
+})();
+</script>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Nunchi — вход</title>
+<style>
+:root{--fg:#141414;--muted:#6B6B6B;--bg:#fff;--line:#E4E2DE;--amber:#C8892B;--bad:#C0453B}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif}
+.wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.card{width:100%;max-width:380px}
+.mark{font-size:52px;font-weight:900;letter-spacing:-.04em;line-height:1;margin:0}
+.mark sup{font-size:18px;font-weight:700;vertical-align:top;margin-left:2px}
+.tag{margin:8px 0 28px;color:var(--amber);font-size:18px;font-weight:600}
+label{display:block;font-size:14px;color:var(--muted);margin-bottom:8px}
+input{width:100%;font-size:18px;padding:16px 18px;border:1.5px solid var(--line);border-radius:18px;outline:none;background:#fff;color:var(--fg)}
+input:focus{border-color:var(--fg)}
+button{width:100%;margin-top:14px;font-size:18px;font-weight:700;padding:16px;border:0;border-radius:18px;background:var(--fg);color:#fff;cursor:pointer}
+button:disabled{opacity:.55}
+.err{min-height:22px;margin-top:12px;color:var(--bad);font-size:15px}
+.foot{margin-top:28px;color:var(--muted);font-size:13px}
+</style></head>
+<body>
+<div class="wrap"><form class="card" id="f" autocomplete="on">
+  <h1 class="mark">Nunchi<sup>®</sup></h1>
+  <p class="tag">Тонкое искусство продаж</p>
+  <label for="p">Пароль команды</label>
+  <input id="p" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+  <button id="b" type="submit">Войти</button>
+  <div class="err" id="e" role="alert"></div>
+  <p class="foot">Пароль нужен один раз — телефон его запомнит.</p>
+</form></div>
+<script id="payload" type="application/json">__PAYLOAD__</script>
+<script>
+(function(){
+  var P = JSON.parse(document.getElementById('payload').textContent);
+  var KEY = 'nunchi_pw';
+  function b64(s){ var b = atob(s), u = new Uint8Array(b.length); for (var i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }
+  async function open(pw){
+    var enc = new TextEncoder();
+    var base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
+    var key = await crypto.subtle.deriveKey({name:'PBKDF2', salt:b64(P.s), iterations:P.n, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['decrypt']);
+    var buf = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(P.i)}, key, b64(P.c));
+    return new TextDecoder().decode(buf);
+  }
+  function show(html){ document.open(); document.write(html); document.close(); }
+  var f = document.getElementById('f'), inp = document.getElementById('p'), btn = document.getElementById('b'), err = document.getElementById('e');
+  var saved = null; try { saved = localStorage.getItem(KEY); } catch(e) {}
+  if (saved) {
+    btn.disabled = true; btn.textContent = 'Открываю…';
+    open(saved).then(show).catch(function(){ try { localStorage.removeItem(KEY); } catch(e) {} btn.disabled = false; btn.textContent = 'Войти'; err.textContent = 'Пароль сменился — введите новый.'; });
+  }
+  f.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var pw = inp.value.trim(); if (!pw) return;
+    btn.disabled = true; btn.textContent = 'Открываю…'; err.textContent = '';
+    open(pw).then(function(html){ try { localStorage.setItem(KEY, pw); } catch(e) {} show(html); })
+      .catch(function(){ btn.disabled = false; btn.textContent = 'Войти'; err.textContent = 'Неверный пароль'; inp.select(); });
+  });
+})();
+</script>
+</body></html>
