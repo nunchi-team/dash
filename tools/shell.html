@@ -46,7 +46,7 @@ button:disabled{opacity:.55}
     var buf = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(P.i)}, key, b64(P.c));
     return new TextDecoder().decode(buf);
   }
-  function show(html){ document.open(); document.write(html); document.close(); }
+  function show(html){ setTimeout(function(){ try{ if(document.getElementById('f')) fail('Не открылось — нажмите «Войти» ещё раз.'); }catch(e){} }, 8000); document.open(); document.write(html); document.close(); }
   var f = document.getElementById('f'), inp = document.getElementById('p'), btn = document.getElementById('b'), err = document.getElementById('e');
   function fail(msg){ btn.disabled = false; btn.textContent = 'Войти'; err.textContent = msg || ''; }
   var savedK = null, savedPw = null; try { savedK = localStorage.getItem(KK); savedPw = localStorage.getItem(KEY); } catch(e) {}
