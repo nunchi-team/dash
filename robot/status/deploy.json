@@ -1,13 +1,11 @@
 {
- "ok": true,
- "step": "готово",
- "at": "27.11.2026 22:22",
+ "ok": false,
+ "step": "робот выложен, но не читает таблицы",
+ "at": "27.11.2026 22:31",
  "log": [
-  "",
-  "gRPC status details:",
   "- '@type': type.googleapis.com/google.rpc.RequestInfo",
-  "  request_id: 1b8193f0-beb3-446a-b9f9-6070d08bc7c0",
-  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-27T19-20-51.515-yc_iam_service-account_get.txt",
+  "  request_id: 9474eaf9-298e-489a-b65a-391d82d94097",
+  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-27T19-28-04.665-yc_iam_service-account_get.txt",
   "Traceback (most recent call last):",
   "  File \"<string>\", line 1, in <module>",
   "  File \"/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/json/__init__.py\", line 293, in load",
@@ -25,20 +23,11 @@
   "YC_FOLDER_ID не похож на ID каталога, использую b1g6vsokqeducjk9l8vl",
   "...1s...done (3s)",
   "...1s...done (3s)",
-  "health: {\"ok\": true, \"bot\": true, \"lines\": {\"tonics\": 6, \"cordials\": 5}, \"stock\": 208, \"errors\": [], \"updated\": \"27.11.2026 22:22\"}",
-  "как браузер: 200 7.456138s 95964b; CORS: Access-Control-Allow-Origin: *; botReady: True",
-  "сеть из облака: {\"ok\": true, \"net\": {\"https://api.telegram.org\": \"FAIL <urlopen error timed out> 10.1s\", \"https://ya.ru\": \"ok 0.2s\", \"https://script.google.com\": \"ok 1.3s\"}}"
+  "health: ",
+  "как браузер: 000 60.001307s 0b; CORS: ; botReady: Traceback (most recent call last):",
+  "  File \"<string>\", line 1, in <module>",
+  "FileNotFoundError: [Errno 2] No such file or directory: '/tmp/data.json'",
+  "сеть из облака: "
  ],
- "url": "https://functions.yandexcloud.net/d4emu18dclf7ij3lgve1",
- "health": {
-  "ok": true,
-  "bot": true,
-  "lines": {
-   "tonics": 6,
-   "cordials": 5
-  },
-  "stock": 208,
-  "errors": [],
-  "updated": "27.11.2026 22:22"
- }
+ "url": "https://functions.yandexcloud.net/d4emu18dclf7ij3lgve1"
 }
