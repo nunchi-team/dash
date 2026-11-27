@@ -260,6 +260,7 @@
       (r.others || []).forEach(function (o) { h += '<div class="dc-warn">' + esc(o.label) + ': ' + money(o.debt) + ' ₽ (в список не входит)</div>'; });
       h += '<div class="dc-muted">Данные 1С на ' + esc(r.as_of) + '</div>';
       $('dc-unpaid').innerHTML = h;
+      $('dc-uinv').after($('dc-doc-title'), $('dc-doc-act'));
       $('dc-uinv').innerHTML = r.docs.length ? r.docs.map(function (d) { return '<div class="dc-urow"><div>Счёт по УПД № ' + esc(d.number) + ' от ' + dmy(d.date) + '<small>К оплате ' + money(d.debt) + ' ₽</small></div><button class="dc-btn" type="button" data-kind="uinv" data-did="' + esc(d.id) + '" data-debt="' + d.debt + '">PDF</button></div>'; }).join('') : '<div class="dc-muted">Нет неоплаченных УПД.</div>';
       if (r.docs.length) makeActions('dc-unpaid-act', function () { return pdfUnpaid(); }, 'Неоплаченные_УПД_' + file(S.client.name) + '.pdf');
     }).catch(function (e) { $('dc-unpaid').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; });
@@ -335,7 +336,7 @@
   function openDoc(kind, did, btn) {
     var id = S.client.id; btn.disabled = true; var old = btn.textContent; btn.textContent = '…';
     $('dc-doc-title').hidden = true; show('dc-doc-act', false);
-    var isU = kind === 'uinv';
+    var isU = kind === 'uinv', row = btn.closest('.dc-urow'); if (row) row.after($('dc-doc-title'), $('dc-doc-act'));
     call('print', { client: id, kind: isU ? 'upd' : kind, id: did }).then(function (p) {
       if (S.client.id !== id) return;
       if (isU) p = invFromUpd(p, parseFloat(btn.getAttribute('data-debt')));
