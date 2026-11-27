@@ -6,6 +6,7 @@
 Результат: зашифрованная страница (по умолчанию index.html) и статус robot/status/managers.json (без названий клиентов).
 Если что-то не так, старая страница остаётся как была.
 """
+import hashlib
 import base64, collections, datetime as dt, json, os, re, sys, time, urllib.parse, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -286,7 +287,7 @@ def encrypt_page(html, password, iters=300000):
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-    salt, iv = os.urandom(16), os.urandom(12)
+    salt, iv = hashlib.sha256(b'nunchi-team-site-salt-v1').digest()[:16], os.urandom(12)  # соль постоянная: телефон хранит готовый ключ и не считает его заново
     key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=iters).derive(password.encode())
     ct = AESGCM(key).encrypt(iv, html.encode('utf-8'), None)
     b = lambda x: base64.b64encode(x).decode()
@@ -337,10 +338,17 @@ def main():
         if not site:
             raise RuntimeError('нет пароля сайта (секрет SITE_PASSWORD или пароль, заданный на сайте)')
         html = build_html(data, {})
-        out = encrypt_page(html, site)
         path = os.path.join(ROOT, TARGET)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        open(path, 'w', encoding='utf-8').write(out)
+        hp = os.path.join(ROOT, 'robot', 'status', 'page.sha256')
+        hh = hashlib.sha256((site + '\n' + html).encode('utf-8')).hexdigest()
+        same = os.path.exists(path) and os.path.exists(hp) and open(hp).read().strip() == hh
+        if same:
+            out = open(path, encoding='utf-8').read()  # данные не менялись — файл не трогаем, у телефонов остаётся кэш
+        else:
+            out = encrypt_page(html, site)
+            open(path, 'w', encoding='utf-8').write(out)
+            os.makedirs(os.path.dirname(hp), exist_ok=True); open(hp, 'w').write(hh)
         w = data['weekly'][-1]
         cnt = collections.Counter(r['priority'] for r in data['points_years'])
         write_status(ok=True, step='готово', target=TARGET, orders_read=len(orders), clients_in_1c=len(clients),

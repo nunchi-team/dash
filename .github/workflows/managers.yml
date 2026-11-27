@@ -41,7 +41,7 @@ jobs:
         run: |
           git config user.name "nunchi-robot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for f in robot/status/managers.json robot/status/metadata.json robot/status/probe.enc index.html test/index.html robot/test; do [ -e "$f" ] && git add -A "$f"; done
+          for f in robot/status/managers.json robot/status/metadata.json robot/status/probe.enc robot/status/page.sha256 index.html test/index.html robot/test; do [ -e "$f" ] && git add -A "$f"; done
           if ! git diff --cached --quiet; then
             git commit -m "Страница менеджеров: обновление из 1С"
             for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done

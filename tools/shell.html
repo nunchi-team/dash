@@ -34,28 +34,37 @@ button:disabled{opacity:.55}
 <script>
 (function(){
   var P = JSON.parse(document.getElementById('payload').textContent);
-  var KEY = 'nunchi_pw';
+  var KEY = 'nunchi_pw', KK = 'nunchi_k';
   function b64(s){ var b = atob(s), u = new Uint8Array(b.length); for (var i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }
-  async function open(pw){
-    var enc = new TextEncoder();
-    var base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
-    var key = await crypto.subtle.deriveKey({name:'PBKDF2', salt:b64(P.s), iterations:P.n, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  function tob64(buf){ var u = new Uint8Array(buf), s = ''; for (var i=0;i<u.length;i++) s += String.fromCharCode(u[i]); return btoa(s); }
+  async function rawKey(pw){
+    var base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+    return crypto.subtle.deriveBits({name:'PBKDF2', salt:b64(P.s), iterations:P.n, hash:'SHA-256'}, base, 256);
+  }
+  async function openWith(raw){
+    var key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
     var buf = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(P.i)}, key, b64(P.c));
     return new TextDecoder().decode(buf);
   }
   function show(html){ document.open(); document.write(html); document.close(); }
   var f = document.getElementById('f'), inp = document.getElementById('p'), btn = document.getElementById('b'), err = document.getElementById('e');
-  var saved = null; try { saved = localStorage.getItem(KEY); } catch(e) {}
-  if (saved) {
-    btn.disabled = true; btn.textContent = 'Открываю…';
-    open(saved).then(show).catch(function(){ try { localStorage.removeItem(KEY); } catch(e) {} btn.disabled = false; btn.textContent = 'Войти'; err.textContent = 'Пароль сменился — введите новый.'; });
+  function fail(msg){ btn.disabled = false; btn.textContent = 'Войти'; err.textContent = msg || ''; }
+  var savedK = null, savedPw = null; try { savedK = localStorage.getItem(KK); savedPw = localStorage.getItem(KEY); } catch(e) {}
+  async function auto(){
+    // быстрый путь: сохранённый ключ — без долгого расчёта
+    if (savedK) { try { return show(await openWith(b64(savedK))); } catch(e) { try { localStorage.removeItem(KK); } catch(x) {} } }
+    if (savedPw) {
+      try { var raw = await rawKey(savedPw), html = await openWith(raw); try { localStorage.setItem(KK, tob64(raw)); localStorage.removeItem(KEY); } catch(x) {} return show(html); }
+      catch(e) { try { localStorage.removeItem(KEY); } catch(x) {} fail('Пароль сменился — введите новый.'); }
+    }
   }
+  if (savedK || savedPw) { btn.disabled = true; btn.textContent = 'Открываю…'; auto(); }
   f.addEventListener('submit', function(ev){
     ev.preventDefault();
     var pw = inp.value.trim(); if (!pw) return;
     btn.disabled = true; btn.textContent = 'Открываю…'; err.textContent = '';
-    open(pw).then(function(html){ try { localStorage.setItem(KEY, pw); } catch(e) {} show(html); })
-      .catch(function(){ btn.disabled = false; btn.textContent = 'Войти'; err.textContent = 'Неверный пароль'; inp.select(); });
+    rawKey(pw).then(function(raw){ return openWith(raw).then(function(html){ try { localStorage.setItem(KK, tob64(raw)); localStorage.removeItem(KEY); } catch(e) {} show(html); }); })
+      .catch(function(){ fail('Неверный пароль'); inp.select(); });
   });
 })();
 </script>

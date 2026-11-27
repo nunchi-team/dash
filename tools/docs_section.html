@@ -79,6 +79,7 @@
 #dash-root .mb #docs h3{margin:6px 0 0;font-size:17px}
 #dash-root .mb #docs h4{margin:18px 0 4px;font-size:15px;padding-top:12px;border-top:1px solid var(--color-border-line)}
 #docs h4[data-c]::after{content:' ▴';color:var(--color-fg-muted)}#docs h4[data-c="1"]::after{content:' ▾'}
+#docs button,#docs a,#docs .dc-item{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 #docs .dc-muted{color:var(--color-fg-muted);font-size:13px}
 #docs .dc-l{display:block;font-size:12.5px;color:var(--color-fg-muted);margin:8px 0 4px}
 #docs input,#docs select{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--color-border-line);border-radius:10px;background:var(--color-bg);color:var(--color-fg)}
@@ -129,7 +130,13 @@
   function setErr(id, msg) { var e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
   function file(s) { return String(s).replace(/[^\wА-Яа-яЁё.-]+/g, '_').slice(0, 60); }
 
+  var MEMO = {}, MEMO_OK = { stamp: 600, docs: 120, unpaid: 90, print: 300, clients: 120 };
   function call(action, params, post) {
+    var ttl = !post && MEMO_OK[action], mk = ttl ? action + '|' + JSON.stringify(params || {}) + '|' + S.token : '';
+    if (ttl && MEMO[mk] && Date.now() - MEMO[mk].t < ttl * 1000) return Promise.resolve(MEMO[mk].v);
+    return call0(action, params, post).then(function (v) { if (ttl) MEMO[mk] = { t: Date.now(), v: v }; return v; });
+  }
+  function call0(action, params, post) {
     var q = [];
     var all = Object.assign({ action: action }, params || {});
     if (S.token && action !== 'login') all.t = S.token;
@@ -157,8 +164,8 @@
   }
   window.addEventListener('load', applyView);
   function logout(keepMsg) {
-    S.token = ''; try { sessionStorage.removeItem('nunchi_docs'); } catch (e) {}
-    if (!keepMsg) { try { localStorage.removeItem('nunchi_pw'); } catch (e) {} applyView(); location.reload(); return; }  // «Выйти» — выход отовсюду, нужен пароль сайта заново
+    MEMO = {}; S.token = ''; try { sessionStorage.removeItem('nunchi_docs'); sessionStorage.removeItem('nunchi_cl'); } catch (e) {}
+    if (!keepMsg) { try { localStorage.removeItem('nunchi_pw'); localStorage.removeItem('nunchi_k'); } catch (e) {} applyView(); location.reload(); return; }  // «Выйти» — выход отовсюду, нужен пароль сайта заново
     applyView();
     $('dc-pin').value = ''; show('dc-app', false); show('dc-login', true);
     setErr('dc-login-err', 'Сессия закончилась. Введите PIN ещё раз.');
@@ -176,19 +183,24 @@
     show('dc-login', false); show('dc-app', true); applyView();
     $('dc-who').textContent = S.name; show('dc-client', false); show('dc-pick', true); show('dc-admin', false); show('dc-adminbar', S.admin);
     S.stamps = null; call('stamp').then(function (r) { S.stamps = r.stamps || {}; }).catch(function () { S.stamps = {}; });
-    $('dc-list').innerHTML = '<div class="dc-muted">Загружаю список клиентов…</div>';
+    var cached = null; try { cached = JSON.parse(sessionStorage.getItem('nunchi_cl') || 'null'); } catch (e) {}
+    if (cached && cached.t === S.token && cached.c) { S.clients = cached.c; S.orgs = cached.o || []; prep(); renderList(); }
+    else $('dc-list').innerHTML = '<div class="dc-muted">Загружаю список клиентов…</div>';
+    setTimeout(function () { ensurePdfLib().then(getFonts).catch(function () {}); }, 800);  // PDF-модуль готовим заранее
     call('clients').then(function (r) {
-      S.clients = r.clients || []; S.orgs = r.orgs || []; S.all = !!r.all; if (r.admin != null) { S.admin = !!r.admin; show('dc-adminbar', S.admin); } S.maxMonths = r.max_months || null; renderList();
-    }).catch(function (e) { $('dc-list').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; });
+      try { sessionStorage.setItem('nunchi_cl', JSON.stringify({ t: S.token, c: r.clients || [], o: r.orgs || [] })); } catch (e) {}
+      S.clients = r.clients || []; S.orgs = r.orgs || []; S.all = !!r.all; if (r.admin != null) { S.admin = !!r.admin; show('dc-adminbar', S.admin); } S.maxMonths = r.max_months || null; prep(); renderList();
+    }).catch(function (e) { if (S.clients.length) return; $('dc-list').innerHTML = '<div class="dc-err">' + esc(e.message) + '</div>'; });
   }
 
   // ---------- список клиентов ----------
+  function prep() { S.clients.forEach(function (c) { c._n = c.name.toLowerCase().replace(/ё/g, 'е'); }); }
   function renderList() {
     var q = $('dc-q').value.trim().toLowerCase().replace(/ё/g, 'е'), qd = q.replace(/\D/g, '');
     if (!q) { $('dc-count').textContent = 'Клиентов в списке: ' + S.clients.length + '. Начните вводить название (или ИНН) — список появится сразу.'; $('dc-list').innerHTML = ''; return; }
     var r1 = [], r2 = [], r3 = [];
     S.clients.forEach(function (c) {
-      var n = c.name.toLowerCase().replace(/ё/g, 'е');
+      var n = c._n || (c._n = c.name.toLowerCase().replace(/ё/g, 'е'));
       if (n.indexOf(q) === 0) r1.push(c);
       else if (n.indexOf(' ' + q) >= 0 || n.indexOf('"' + q) >= 0 || n.indexOf('«' + q) >= 0) r2.push(c);
       else if ((q.length >= 3 && n.indexOf(q) >= 0) || (qd.length >= 3 && String(c.inn).indexOf(qd) >= 0)) r3.push(c);
@@ -210,7 +222,7 @@
     $('dc-cinfo').textContent = [c.inn ? 'ИНН ' + c.inn : '', S.all && c.manager ? 'менеджер: ' + c.manager : ''].filter(Boolean).join(' · ');
     $('dc-act').innerHTML = ''; show('dc-act-act', false); show('dc-stamp-row', false); setErr('dc-act-err', '');
     $('dc-inv').innerHTML = ''; show('dc-doc-act', false); show('dc-doc-title', false); show('dc-inv-load', true);
-    S.actOrg = ''; renderActBtns();
+    S.actOrg = ''; renderActBtns(); setTimeout(function () { if (S.client && S.client.id === c.id) call('docs', { client: c.id }).catch(function () {}); }, 600);
     var to = yest(), from = yest(); from.setMonth(from.getMonth() - 3); from.setDate(from.getDate() + 1);
     $('dc-to').max = iso(yest()); $('dc-from').max = iso(yest());
     $('dc-to').value = iso(to); $('dc-from').value = iso(from);
@@ -690,7 +702,7 @@
   $('dc-enter').onclick = enter;
   $('dc-pin').onkeydown = function (e) { if (e.key === 'Enter') enter(); };
   $('dc-exit').onclick = function () { logout(false); };
-  $('dc-q').oninput = renderList;
+  var rq = 0; $('dc-q').oninput = function () { cancelAnimationFrame(rq); rq = requestAnimationFrame(renderList); };
   $('dc-list').onclick = function (e) { var b = e.target.closest('[data-id]'); if (b) pick(b.getAttribute('data-id')); };
   $('dc-back').onclick = function () { show('dc-client', false); show('dc-pick', true); window.scrollTo({ top: $('docs').offsetTop - 10 }); };
   $('dc-chips').onclick = function (e) { var b = e.target.closest('[data-m]'); if (b) chip(Number(b.getAttribute('data-m'))); };
