@@ -13,6 +13,7 @@ out_dir = os.path.join(ROOT, 'robot', 'status'); os.makedirs(out_dir, exist_ok=T
 samples = {}
 try:
     samples = B.api_export('probe', pw)
+    samples['print_sample'] = B.api_export('sample', pw)
 except Exception as e:
     samples = {'ОШИБКА': str(e)[:300]}
 # названия полей (без данных) — открыто; сами записи — только зашифрованно
