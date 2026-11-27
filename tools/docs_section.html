@@ -567,8 +567,11 @@
     list.sort(function (a, b) { return String(b.last || '').localeCompare(String(a.last || '')); });
     if (!list.length) { $('dc-unas').innerHTML = '<div class="dc-sum">Нераспределённых точек нет — у всех клиентов есть действующий менеджер.</div>'; return; }
     var by = {}; list.forEach(function (c) { var m = c.manager || 'не указан'; by[m] = (by[m] || 0) + 1; });
-    $('dc-unas').innerHTML = '<div class="dc-sum"><b>Всего: ' + list.length + '</b> (' + Object.keys(by).map(function (k) { return esc(k) + ': ' + by[k]; }).join('; ') + ')</div><div class="dc-tw"><table><tr><th>Клиент</th><th>Был у</th><th>Последняя отгрузка</th></tr>' +
+    var hdr = '<div class="dc-sum"><b>Всего: ' + list.length + '</b> (' + Object.keys(by).map(function (k) { return esc(k) + ': ' + by[k]; }).join('; ') + ')</div>';
+    var tbl = '<div class="dc-tw"><table><tr><th>Клиент</th><th>Был у</th><th>Последняя отгрузка</th></tr>' +
       list.slice(0, 300).map(function (c) { return '<tr><td>' + esc(c.name) + '</td><td>' + esc(c.manager || '—') + '</td><td>' + esc(c.last ? dmy(String(c.last).slice(0, 10)) : '') + '</td></tr>'; }).join('') + '</table></div>' + (list.length > 300 ? '<div class="dc-muted">Показаны первые 300 из ' + list.length + '.</div>' : '');
+    $('dc-unas').innerHTML = hdr + '<button class="dc-btn" type="button" id="dc-unas-tog">Показать список ▾</button><div id="dc-unas-list" hidden>' + tbl + '</div>';
+    $('dc-unas-tog').onclick = function () { var b = $('dc-unas-list'); b.hidden = !b.hidden; this.textContent = b.hidden ? 'Показать список ▾' : 'Свернуть список ▴'; };
   }
   function loadAdmin() {
     aErr(''); $('dc-ulist').innerHTML = '<div class="dc-muted">Загружаю…</div>';
