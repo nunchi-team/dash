@@ -325,7 +325,7 @@
   }
   function invFromUpd(u, debt) {
     var p = JSON.parse(JSON.stringify(u)), tot = Number(u.total) || 0, num = u.number, dt = u.date;
-    p.number = 'Д-' + num; p.date = new Date().toISOString().slice(0, 10);
+    p.number = 'Д-' + num; var n0 = new Date(); p.date = n0.getFullYear() + '-' + ('0' + (n0.getMonth() + 1)).slice(-2) + '-' + ('0' + n0.getDate()).slice(-2);
     if (!(debt > 0) || Math.abs(debt - tot) < 0.005) { p.contract = p.contract || ''; return p; }
     var k = tot ? debt / tot : 1;
     p.lines = [{ n: 1, name: 'Оплата по УПД № ' + num + ' от ' + dmy(dt) + ' (остаток долга)', code: '', qty: 1, unit: 'усл.', price: debt, total: debt }];
@@ -339,7 +339,7 @@
     call('print', { client: id, kind: isU ? 'upd' : kind, id: did }).then(function (p) {
       if (S.client.id !== id) return;
       if (isU) p = invFromUpd(p, parseFloat(btn.getAttribute('data-debt')));
-      $('dc-doc-title').textContent = (kind === 'upd' ? 'УПД № ' : 'Счёт № ') + p.number + ' от ' + dmy(p.date); show('dc-doc-title', true);
+      $('dc-doc-title').textContent = 'Готово: ' + (kind === 'upd' ? 'УПД № ' : 'Счёт № ') + p.number + ' от ' + dmy(p.date); show('dc-doc-title', true);
       makeActions('dc-doc-act', function () { return kind === 'upd' ? pdfUpd(p) : pdfInvoice(p); }, (kind === 'upd' ? 'УПД_' : 'Счет_') + file(p.number) + '_' + file(S.client.name) + '.pdf');
       $('dc-doc-act').scrollIntoView({ block: 'nearest' });
     }).catch(function (e) { $('dc-doc-title').textContent = e.message; show('dc-doc-title', true); }).then(function () { btn.disabled = false; btn.textContent = old; });
