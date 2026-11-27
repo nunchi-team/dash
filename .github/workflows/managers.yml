@@ -26,19 +26,17 @@ jobs:
       - run: pip install --quiet cryptography
       - name: Собрать страницу из данных 1С
         env:
-          ODATA_USER: ${{ secrets.ODATA_USER }}
-          ODATA_PASS: ${{ secrets.ODATA_PASS }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
           TARGET: test/index.html
         run: python3 tools/build_managers.py
       - name: Разведка полей 1С (по запросу, зашифровано)
         if: hashFiles('robot/test/probe.flag') != ''
         env:
-          ODATA_USER: ${{ secrets.ODATA_USER }}
-          ODATA_PASS: ${{ secrets.ODATA_PASS }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
         run: |
-          if [ -n "$ODATA_PASS" ] && [ -n "$SITE_PASSWORD" ]; then python3 tools/probe_1c.py && git rm -q robot/test/probe.flag; else echo 'секретов нет, разведка отложена'; fi
+          if [ -n "$ADMIN_KEY" ] && [ -n "$SITE_PASSWORD" ]; then python3 tools/probe_1c.py && git rm -q robot/test/probe.flag; else echo 'секретов нет, разведка отложена'; fi
       - name: Сохранить результат
         run: |
           git config user.name "nunchi-robot"

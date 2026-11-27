@@ -53,6 +53,34 @@ def norm_key(k):
     return (k or ZERO).lower()
 
 
+API = os.environ.get('API_URL', 'https://api.nunchidrink.ru/nunchi-api/api.php')
+
+
+def api_export(what, key):
+    url = API + '?action=export&what=' + what + '&key=' + urllib.parse.quote(key)
+    last = None
+    for i in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'nunchi-robot'}), timeout=300) as r:
+                return json.loads(r.read().decode('utf-8'))
+        except Exception as e:
+            last = e; time.sleep(5 * (i + 1))
+    raise RuntimeError('хостинг не ответил: %s %s' % (type(last).__name__, str(last)[:150]))
+
+
+def fetch_orders_api(key):
+    j = api_export('orders', key)
+    if 'error' in j:
+        raise RuntimeError('хостинг: ' + str(j['error']))
+    orders = []
+    for d, c, m, n in j['orders']:
+        try:
+            orders.append((dt.date.fromisoformat(d), c, m, n))
+        except Exception:
+            pass
+    return orders, j['clients'], j['employees']
+
+
 def fetch_orders(user, pw):
     rows = odata_all('Document_РасходнаяНакладная', {
         '$select': 'Ref_Key,Number,Date,Контрагент_Key,Ответственный_Key',
@@ -288,12 +316,12 @@ def write_status(**kw):
 
 
 def main():
-    user, pw, site = (os.environ.get(k, '').strip() for k in ('ODATA_USER', 'ODATA_PASS', 'SITE_PASSWORD'))
-    miss = [k for k, v in (('ODATA_USER', user), ('ODATA_PASS', pw), ('SITE_PASSWORD', site)) if not v]
+    user, pw, site = (os.environ.get(k, '').strip() for k in ('ODATA_USER', 'ADMIN_KEY', 'SITE_PASSWORD'))
+    miss = [k for k, v in (('ADMIN_KEY', pw), ('SITE_PASSWORD', site)) if not v]
     if miss:
         write_status(ok=False, step='нет секретов: ' + ', '.join(miss)); print('нет секретов', miss); return
     try:
-        orders, clients, emps = fetch_orders(user, pw)
+        orders, clients, emps = fetch_orders_api(pw)
         today = dt.datetime.now(dt.timezone(dt.timedelta(hours=3))).date()
         if len(orders) < 500:
             raise RuntimeError('из 1С пришло слишком мало накладных (%d): страницу не трогаю' % len(orders))
