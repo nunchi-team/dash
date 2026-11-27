@@ -18,6 +18,9 @@
     <div id="dc-admin" hidden>
       <h4>Менеджеры и доступ</h4>
       <div id="dc-ulist"></div>
+      <h4>Нераспределённые точки</h4>
+      <div class="dc-muted">Клиенты, у которых ответственный в 1С — не действующий менеджер сайта (удалён, уволен или не указан). Поменяйте ответственного в 1С — на сайте точка появится у нового менеджера в течение ~20 минут.</div>
+      <div id="dc-unas"></div>
       <label class="dc-l" for="dc-emp">Добавить менеджера (выберите сотрудника из 1С)</label>
       <select id="dc-emp"></select>
       <label class="dc-l" for="dc-newname">Как показывать имя (Имя Фамилия)</label>
@@ -558,6 +561,15 @@
     var b = $('dc-pinbox'); b.hidden = false;
     b.innerHTML = esc(what) + ' <b>' + esc(name) + '</b>PIN:<b>' + esc(pin) + '</b>Покажется только сейчас. Перешлите его менеджеру лично и сразу запишите.';
   }
+  function renderUnas(users) {
+    var known = {}; (users || []).forEach(function (u) { (u.match || []).concat([u.name]).forEach(function (m) { known[String(m).toLowerCase().trim()] = 1; }); });
+    var list = (S.clients || []).filter(function (c) { var m = String(c.manager || '').toLowerCase().trim(); return !m || !known[m]; });
+    list.sort(function (a, b) { return String(b.last || '').localeCompare(String(a.last || '')); });
+    if (!list.length) { $('dc-unas').innerHTML = '<div class="dc-sum">Нераспределённых точек нет — у всех клиентов есть действующий менеджер.</div>'; return; }
+    var by = {}; list.forEach(function (c) { var m = c.manager || 'не указан'; by[m] = (by[m] || 0) + 1; });
+    $('dc-unas').innerHTML = '<div class="dc-sum"><b>Всего: ' + list.length + '</b> (' + Object.keys(by).map(function (k) { return esc(k) + ': ' + by[k]; }).join('; ') + ')</div><div class="dc-tw"><table><tr><th>Клиент</th><th>Был у</th><th>Последняя отгрузка</th></tr>' +
+      list.slice(0, 300).map(function (c) { return '<tr><td>' + esc(c.name) + '</td><td>' + esc(c.manager || '—') + '</td><td>' + esc(c.last ? dmy(String(c.last).slice(0, 10)) : '') + '</td></tr>'; }).join('') + '</table></div>' + (list.length > 300 ? '<div class="dc-muted">Показаны первые 300 из ' + list.length + '.</div>' : '');
+  }
   function loadAdmin() {
     aErr(''); $('dc-ulist').innerHTML = '<div class="dc-muted">Загружаю…</div>';
     call('admin_users', {}, true).then(function (r) {
@@ -568,6 +580,7 @@
       $('dc-emp').innerHTML = '<option value="">— выберите сотрудника —</option>' + r.employees.map(function (e) { return '<option>' + esc(e) + '</option>'; }).join('');
       $('dc-pw-msg').textContent = r.site_pw_changed ? 'Пароль менялся ' + r.site_pw_changed.slice(0, 10).split('-').reverse().join('.') + '.' : '';
       S.autoApply = !!r.auto_apply;
+      renderUnas(r.users);
     }).catch(function (e) { $('dc-ulist').innerHTML = ''; aErr(e.message); });
   }
   $('dc-admin-btn').onclick = function () { show('dc-admin', true); show('dc-pick', false); show('dc-client', false); show('dc-adminbar', false); $('dc-pinbox').hidden = true; loadAdmin(); };
