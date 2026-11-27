@@ -1,5 +1,105 @@
 {
- "ok": false,
- "step": "нет секретов: ADMIN_KEY",
- "at": "27.11.2026 22:47"
+ "ok": true,
+ "step": "готово",
+ "target": "test/index.html",
+ "orders_read": 7813,
+ "clients_in_1c": 1295,
+ "contract_clients_excluded": 0,
+ "last_week": {
+  "week": "2026-11-23",
+  "week_end": "2026-11-27",
+  "orders": "46",
+  "points": "35",
+  "points_ly": "46",
+  "new": "2",
+  "returned": "3",
+  "lost": "7",
+  "active": "156",
+  "active_ly": "167",
+  "at_risk": "37",
+  "partial": "1"
+ },
+ "months": [
+  {
+   "month": "1",
+   "pts26": "87",
+   "pts25": "80",
+   "partial": "0"
+  },
+  {
+   "month": "2",
+   "pts26": "91",
+   "pts25": "98",
+   "partial": "0"
+  },
+  {
+   "month": "3",
+   "pts26": "134",
+   "pts25": "109",
+   "partial": "0"
+  },
+  {
+   "month": "4",
+   "pts26": "133",
+   "pts25": "123",
+   "partial": "0"
+  },
+  {
+   "month": "5",
+   "pts26": "145",
+   "pts25": "123",
+   "partial": "0"
+  },
+  {
+   "month": "6",
+   "pts26": "175",
+   "pts25": "145",
+   "partial": "0"
+  },
+  {
+   "month": "7",
+   "pts26": "198",
+   "pts25": "131",
+   "partial": "0"
+  },
+  {
+   "month": "8",
+   "pts26": "142",
+   "pts25": "130",
+   "partial": "0"
+  },
+  {
+   "month": "9",
+   "pts26": "126",
+   "pts25": "114",
+   "partial": "0"
+  },
+  {
+   "month": "10",
+   "pts26": "112",
+   "pts25": "115",
+   "partial": "0"
+  },
+  {
+   "month": "11",
+   "pts26": "102",
+   "pts25": "103",
+   "partial": "1"
+  }
+ ],
+ "points_year": 381,
+ "priorities": {
+  "Срочно": 50,
+  "Высокий": 135,
+  "Средний": 34,
+  "Низкий": 60,
+  "Заказывает": 102
+ },
+ "lists": {
+  "active": 156,
+  "risk": 37,
+  "lost": 7,
+  "came": 5
+ },
+ "at": "27.11.2026 22:56"
 }
