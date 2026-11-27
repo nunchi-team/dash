@@ -1,13 +1,13 @@
 {
  "ok": true,
  "step": "готово",
- "at": "28.11.2026 01:32",
+ "at": "28.11.2026 01:36",
  "log": [
   "",
   "gRPC status details:",
   "- '@type': type.googleapis.com/google.rpc.RequestInfo",
-  "  request_id: a66867ef-019c-49b0-bb0b-4e696b630b7e",
-  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-27T22-31-17.972-yc_iam_service-account_get.txt",
+  "  request_id: a48e040a-8918-4ae6-aa63-c75def5b1525",
+  "If you are going to ask for help of cloud support, please send the following trace file: /home/runner/.config/yandex-cloud/logs/2026-11-27T22-35-56.808-yc_iam_service-account_get.txt",
   "Traceback (most recent call last):",
   "  File \"<string>\", line 1, in <module>",
   "  File \"/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/json/__init__.py\", line 293, in load",
@@ -23,11 +23,11 @@
   "    raise JSONDecodeError(\"Expecting value\", s, err.value) from None",
   "json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
   "YC_FOLDER_ID не похож на ID каталога, использую b1g6vsokqeducjk9l8vl",
+  "...1s...done (3s)",
   "...1s...done (2s)",
-  "...1s...done (2s)",
-  "health: {\"ok\": true, \"bot\": true, \"lines\": {\"tonics\": 6, \"cordials\": 5}, \"stock\": 208, \"errors\": [], \"updated\": \"28.11.2026 01:31\"}",
-  "как браузер: 200 8.487799s 95964b; CORS: Access-Control-Allow-Origin: *; botReady: True",
-  "сеть из облака: {\"ok\": true, \"net\": {\"https://api.telegram.org\": \"FAIL <urlopen error timed out> 10.0s\", \"https://ya.ru\": \"ok 0.1s\", \"https://script.google.com\": \"ok 1.5s\"}}"
+  "health: {\"ok\": true, \"bot\": true, \"lines\": {\"tonics\": 6, \"cordials\": 5}, \"stock\": 208, \"errors\": [], \"updated\": \"28.11.2026 01:36\"}",
+  "как браузер: 200 7.764253s 95964b; CORS: Access-Control-Allow-Origin: *; botReady: True",
+  "сеть из облака: {\"ok\": true, \"net\": {\"https://api.telegram.org\": \"FAIL <urlopen error timed out> 10.0s\", \"https://ya.ru\": \"ok 0.1s\", \"https://script.google.com\": \"ok 1.3s\"}}"
  ],
  "url": "https://functions.yandexcloud.net/d4emu18dclf7ij3lgve1",
  "health": {
@@ -39,6 +39,6 @@
   },
   "stock": 208,
   "errors": [],
-  "updated": "28.11.2026 01:31"
+  "updated": "28.11.2026 01:36"
  }
 }
