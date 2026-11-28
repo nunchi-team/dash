@@ -412,30 +412,43 @@ window.__D = {"weekly":[{"week":"2025-12-29","week_end":"2026-01-04","orders":"2
     const gc = document.createElement('span'); gc.className = 'gc'; gc.textContent = count; gh.append(gn, gc); const gb = document.createElement('div'); gb.className = 'gb'; g.append(gh, gb); return [g, gb]; };
   const BL = { all26: 'Все точки 2026', active: 'Активные точки', risk: 'Зона риска', came: 'Пришли за неделю', lost: 'Ушли за неделю' };
   let bl = '';
-  const setBl = (v) => { bl = v; document.querySelectorAll('#dash-root .mb .kb[data-list]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.list === bl))); dash.draw('baselist'); };
+  const setBl = (v) => { bl = v; window.__blNoc = false; document.querySelectorAll('#dash-root .mb .kb[data-list]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.list === bl))); dash.draw('baselist'); };
   document.querySelectorAll('#dash-root .mb .kb[data-list]').forEach((b) => b.addEventListener('click', () => setBl(bl === b.dataset.list ? '' : b.dataset.list)));
   dash.draw('baselist', (el) => {
     el.replaceChildren(); if (!bl) return;
     let items;
     if (bl === 'all26') {
       const d = dash.data('points_years'); if (d.status !== 'ok') { el.textContent = '—'; return; }
-      items = d.data.filter((r) => String(r.year) === String(window.__D.year || '2026')).map((r) => ({ client: r.client, manager: r.manager, meta: r.priority + ' · последний заказ: ' + r.last_label }));
+      items = d.data.filter((r) => String(r.year) === String(window.__D.year || '2026')).map((r) => ({ client: r.client, manager: r.manager, cordial: r.cordial, meta: r.priority + ' · последний заказ: ' + r.last_label }));
     } else {
       const d = dash.data('base_lists'); if (d.status !== 'ok') { el.textContent = '—'; return; }
-      items = d.data.filter((r) => r.list === bl).sort((a, b) => num(a.days) - num(b.days)).map((r) => ({ client: r.client, manager: r.manager,
+      items = d.data.filter((r) => r.list === bl).sort((a, b) => num(a.days) - num(b.days)).map((r) => ({ client: r.client, manager: r.manager, cordial: r.cordial,
         meta: (r.note ? r.note + ' · ' : '') + 'последний заказ: ' + r.last_order + ' (' + nf0.format(num(r.days)) + ' дн. назад) · заказов: ' + nf0.format(num(r.orders)) }));
     }
     items = items.filter((r) => !window.__vis || window.__vis(r.manager));
     const fold = () => { const f = document.createElement('button'); f.type = 'button'; f.className = 'fold'; f.textContent = 'Свернуть';
       f.addEventListener('click', () => { const sec = el.closest('section'); setBl(''); if (sec) sec.scrollIntoView({ block: 'start' }); }); return f; };
-    const ttl = document.createElement('div'); ttl.className = 'ttl'; ttl.textContent = BL[bl] + ' · ' + nf0.format(items.length);
-    el.append(ttl, fold());
+    const hasC = items.some((r) => r.cordial), nAll = items.length;
+    const nY = items.filter((r) => r.cordial === 'Да').length, nO = items.filter((r) => r.cordial === 'Раньше').length, nN = items.filter((r) => r.cordial === 'Нет').length;
+    const pcA = (n) => Math.round(100 * n / (nAll || 1));
+    const ttl = document.createElement('div'); ttl.className = 'ttl'; ttl.textContent = BL[bl] + ' · ' + nf0.format(nAll);
+    el.append(ttl);
+    if (hasC) {
+      const ci = document.createElement('div'); ci.className = 'cinfo'; ci.textContent = 'Кордиал: берут сейчас — ' + nf0.format(nY) + ' (' + pcA(nY) + '%) · брали раньше — ' + nf0.format(nO) + ' · не брали ни разу — ' + nf0.format(nN) + ' (' + pcA(nN) + '%)';
+      const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'chip nocb'; nb.setAttribute('aria-pressed', String(!!window.__blNoc)); nb.textContent = window.__blNoc ? 'Показать всех' : 'Только без кордиала ' + nf0.format(nN);
+      nb.addEventListener('click', () => { window.__blNoc = !window.__blNoc; dash.draw('baselist'); });
+      el.append(ci, nb);
+      if (window.__blNoc) items = items.filter((r) => r.cordial === 'Нет');
+    }
+    el.append(fold());
     const by = d3.group(items, (r) => r.manager);
     Array.from(by).sort((a, b) => b[1].length - a[1].length).forEach(([m, list], gi) => {
       const [g, gb] = grpBox(m, nf0.format(list.length) + ' точек', gi); el.appendChild(g);
       const ul = document.createElement('ul');
       list.forEach((r) => { const li = document.createElement('li'); const t = document.createElement('span'); t.textContent = r.client;
-        const mt = document.createElement('span'); mt.className = 'm'; mt.textContent = r.meta; li.append(t, mt); ul.appendChild(li); });
+        const mt = document.createElement('span'); mt.className = 'm'; mt.textContent = r.meta;
+        if (r.cordial) { const cs = document.createElement('span'); cs.className = 'cd ' + (r.cordial === 'Да' ? 'y' : r.cordial === 'Раньше' ? 'o' : 'n'); cs.textContent = r.cordial === 'Да' ? ' · берёт кордиал' : r.cordial === 'Раньше' ? ' · брала кордиал раньше' : ' · без кордиала'; mt.append(cs); }
+        li.append(t, mt); ul.appendChild(li); });
       gb.appendChild(ul);
     });
     if (items.length > 6) el.appendChild(fold());

@@ -223,6 +223,11 @@ def compute(orders, clients, emps, today, cord=None):
                 return manager_name(emps[m])
         return 'Без менеджера'
 
+    def cord_of(c):
+        if cord is None: return ''
+        cr = cord.get(c)
+        return 'Нет' if not cr else ('Да' if cr[1] >= (today - dt.timedelta(days=365)).isoformat() else 'Раньше')
+
     # ---- точки года ----
     cur_first = dt.date(today.year, today.month, 1)
     prev_last = cur_first - dt.timedelta(days=1)
@@ -259,7 +264,7 @@ def compute(orders, clients, emps, today, cord=None):
 
     def item(kind, c, note=None):
         L = dates[c][-1]
-        return {'list': kind, 'client': clients.get(c, c), 'manager': mgr(c), 'last_order': label_dmy(L),
+        return {'list': kind, 'client': clients.get(c, c), 'manager': mgr(c), 'cordial': cord_of(c), 'last_order': label_dmy(L),
                 'days': str((today - L).days), 'orders': str(len(dates[c])), 'note': note, 'key': kind + '|' + clients.get(c, c)}
     for c in dates:
         L = last_before(c, today)
