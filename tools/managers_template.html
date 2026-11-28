@@ -48,6 +48,12 @@ body { background: var(--color-bg); color: var(--color-fg); font-family: var(--f
 #dash-root .mb .mgr .cnt b { color: var(--color-bad); font-weight: 600; }
 #dash-root .mb .mgr ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 #dash-root .mb .mgr li { display: flex; flex-direction: column; gap: 2px; font-size: var(--cds-font-size-body); }
+#dash-root .mb .cinfo { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 2px 0 10px; }
+#dash-root .mb .cd.n { color: #B4351F; font-weight: 600; }
+#dash-root .mb .cd.o { color: #B07A12; }
+#dash-root .mb .cd.y { color: #2E7D4F; }
+#dash-root .mb button.chip.nocb { background: var(--color-panel); color: var(--color-fg); border: 1px solid var(--color-border-line); margin: 4px 0 8px; }
+#dash-root .mb button.chip.nocb[aria-pressed="true"] { background: #B4351F; color: #fff; border-color: #B4351F; }
 #dash-root .mb .mgr li .m { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 #dash-root .mb .tag { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 11px; color: #fff; margin-right: 6px; vertical-align: 1px; }
 #dash-root .mb a.full { display: block; text-align: center; padding: 12px; border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); color: var(--color-fg); text-decoration: none; font-weight: var(--cds-font-weight-medium); }
@@ -435,9 +441,9 @@ window.__D = {"weekly":[{"week":"2025-12-29","week_end":"2026-01-04","orders":"2
     if (items.length > 6) el.appendChild(fold());
   });
   const PNAME = ['Срочно', 'Высокий', 'Средний', 'Низкий', 'Заказали'];
-  const open = { m: '', p: '' };
+  const open = { m: '', p: '', noc: false };
   const foldBtn = (label, cls, root, m) => { const f = document.createElement('button'); f.type = 'button'; f.className = 'fold' + (cls ? ' ' + cls : ''); f.textContent = label;
-    f.addEventListener('click', () => { open.m = ''; open.p = ''; dash.draw('mgrlist');
+    f.addEventListener('click', () => { open.m = ''; open.p = ''; open.noc = false; dash.draw('mgrlist');
       const t = m ? Array.from(root.querySelectorAll('.mg')).find((x) => x.dataset.m === m) : root; if (t) t.scrollIntoView({ block: 'nearest' }); }); return f; };
   dash.draw('mgrlist', (el) => {
     el.replaceChildren(); const d = dash.data('points_years'); if (d.status !== 'ok') { el.textContent = '—'; return; }
@@ -449,7 +455,9 @@ window.__D = {"weekly":[{"week":"2025-12-29","week_end":"2026-01-04","orders":"2
     if (open.m) el.appendChild(foldBtn('Свернуть все списки', 'top', el, ''));
     mgrs.forEach((g, gi) => {
       const isOpen = open.m === g.m && open.p;
-      const [box, inner] = grpBox(g.m, nf0.format(g.v.length) + ' точек', gi); box.classList.add('mg'); if (isOpen) box.classList.add('open');
+      const hasC = g.v.some((r) => r.cordial), nY = g.v.filter((r) => r.cordial === 'Да').length, nA = nY + g.v.filter((r) => r.cordial === 'Раньше').length;
+      const pc = (n) => Math.round(100 * n / (g.v.length || 1));
+      const [box, inner] = grpBox(g.m, nf0.format(g.v.length) + ' точек' + (hasC ? ' · кордиал ' + pc(nY) + '%' : ''), gi); box.classList.add('mg'); if (isOpen) box.classList.add('open');
       const chips = document.createElement('div'); chips.className = 'chips';
       g.c.forEach((n, i) => {
         const b = document.createElement('button'); b.type = 'button';
@@ -464,13 +472,20 @@ window.__D = {"weekly":[{"week":"2025-12-29","week_end":"2026-01-04","orders":"2
         chips.appendChild(b);
       });
       box.dataset.m = g.m; inner.append(chips);
+      if (hasC) { const ci = document.createElement('div'); ci.className = 'cinfo'; ci.textContent = 'Кордиал: берут за последние 12 мес. — ' + nf0.format(nY) + ' из ' + nf0.format(g.v.length) + ' (' + pc(nY) + '%) · брали когда-либо — ' + nf0.format(nA) + ' (' + pc(nA) + '%)'; inner.append(ci); }
       if (isOpen) {
-        const list = g.v.filter((r) => r.priority === open.p).sort((a, b) => num(b.months_all) - num(a.months_all));
+        let list = g.v.filter((r) => r.priority === open.p).sort((a, b) => num(b.months_all) - num(a.months_all));
+        const noCnt = list.filter((r) => r.cordial === 'Нет').length;
+        if (hasC) { const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'chip nocb'; nb.setAttribute('aria-pressed', String(open.noc));
+          nb.textContent = (open.noc ? 'Показать всех' : 'Только без кордиала ' + nf0.format(noCnt));
+          nb.addEventListener('click', () => { open.noc = !open.noc; dash.draw('mgrlist'); const again = Array.from(el.querySelectorAll('.mg')).find((x) => x.dataset.m === g.m); if (again) again.scrollIntoView({ block: 'nearest' }); }); inner.append(nb); }
+        if (open.noc) list = list.filter((r) => r.cordial === 'Нет');
         const ul = document.createElement('ul');
         list.forEach((r) => {
           const li = document.createElement('li'); const top = document.createElement('span'); top.textContent = r.client;
           const meta = document.createElement('span'); meta.className = 'm';
-          meta.textContent = 'последний заказ: ' + r.last_label + ' · заказывала ' + nf0.format(num(r.months_all)) + ' мес.' + (r.cordial === 'Да' ? ' · берёт кордиал' : r.cordial === 'Нет' ? ' · без кордиала' : '');
+          meta.textContent = 'последний заказ: ' + r.last_label + ' · заказывала ' + nf0.format(num(r.months_all)) + ' мес.';
+          if (r.cordial) { const cs = document.createElement('span'); cs.className = 'cd ' + (r.cordial === 'Да' ? 'y' : r.cordial === 'Раньше' ? 'o' : 'n'); cs.textContent = r.cordial === 'Да' ? ' · берёт кордиал' : r.cordial === 'Раньше' ? ' · брала кордиал раньше' : ' · без кордиала'; meta.append(cs); }
           li.append(top, meta); ul.appendChild(li);
         });
         inner.append(ul, foldBtn('Свернуть', '', el, g.m));

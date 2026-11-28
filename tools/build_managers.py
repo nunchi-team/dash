@@ -126,7 +126,7 @@ def label_dmy(d):
     return '%d %s %d' % (d.day, MON_ABBR[d.month - 1], d.year)
 
 
-def compute(orders, clients, emps, today):
+def compute(orders, clients, emps, today, cord=None):
     """orders: [(date, client_key, manager_key, number)] → словарь для window.__D."""
     skip = {k for k, n in clients.items() if any(w in n.upper() for w in CONTRACT_WORDS)}
     by = collections.defaultdict(list)          # клиент → [(date, manager_key)]
@@ -244,8 +244,12 @@ def compute(orders, clients, emps, today):
             if months_all >= 3: prio, po = 'Высокий', 1
             elif months_all == 2: prio, po = 'Средний', 2
             else: prio, po = 'Низкий', 3
+        cc = ''
+        if cord is not None:   # Да — брала за последние 12 месяцев, Раньше — брала давно, Нет — ни разу
+            cr = cord.get(c)
+            cc = 'Нет' if not cr else ('Да' if cr[1] >= (today - dt.timedelta(days=365)).isoformat() else 'Раньше')
         pts.append({'year': str(today.year), 'client': clients.get(c, c), 'manager': mgr(c), 'status': status, 'priority': prio,
-                    'prio_order': str(po), 'last_label': label_my(L), 'months_all': str(months_all)})
+                    'prio_order': str(po), 'last_label': label_my(L), 'months_all': str(months_all), 'cordial': cc})
     pts.sort(key=lambda r: (int(r['prio_order']), -int(r['months_all']), r['client']))
 
     # ---- списки на кнопках «Клиентская база» (по последней неделе) ----
@@ -328,7 +332,18 @@ def main():
         today = dt.datetime.now(dt.timezone(dt.timedelta(hours=3))).date()
         if len(orders) < 500:
             raise RuntimeError('из 1С пришло слишком мало накладных (%d): страницу не трогаю' % len(orders))
-        data = compute(orders, clients, emps, today)
+        cord, cinfo = None, {}
+        try:
+            cj = api_export('cordial', pw)
+            if 'error' in cj:
+                raise RuntimeError(str(cj['error']))
+            cord = cj.get('cordial') or {}
+            cinfo = {'cordial_items': cj.get('item_count'), 'cordial_lines': cj.get('lines'), 'cordial_clients': len(cord), 'cordial_names': (cj.get('items') or [])[:40]}
+            if not cj.get('item_count') or not cj.get('lines'):
+                cord = None   # правило не сработало — лучше ничего не показывать, чем показать неправду
+        except Exception as e:
+            cinfo = {'cordial_error': str(e)[:200]}
+        data = compute(orders, clients, emps, today, cord)
         try:  # пароль сайта: если его меняли на самом сайте, он лежит на хостинге
             site_new = (api_export('sitepw', pw) or {}).get('password')
         except Exception:
@@ -354,7 +369,7 @@ def main():
         write_status(ok=True, step='готово', target=TARGET, orders_read=len(orders), clients_in_1c=len(clients),
                      contract_clients_excluded=data['_skipped_contract_clients'], last_week=w, months=data['months'],
                      points_year=len(data['points_years']), priorities=dict(cnt),
-                     lists=dict(collections.Counter(r['list'] for r in data['base_lists'])))
+                     lists=dict(collections.Counter(r['list'] for r in data['base_lists'])), **cinfo)
         print('готово', TARGET, len(out) // 1024, 'КБ')
     except Exception as e:
         msg = str(e)
