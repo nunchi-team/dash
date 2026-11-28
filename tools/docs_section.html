@@ -178,7 +178,7 @@
       var mine = {}; (S.match || []).concat([S.name]).forEach(function (m) { mine[nk(m)] = 1; });
       window.__vis = function (m) { return !!mine[nk(m)]; };
     } else window.__vis = null;
-    if (window.dash) { try { dash.draw('mgrlist'); dash.draw('baselist'); } catch (e) {} }
+    if (window.dash) { try { dash.draw('mgrlist'); dash.draw('baselist'); dash.draw('cordtile'); } catch (e) {} }
   }
   window.addEventListener('load', applyView);
   function logout(keepMsg) {

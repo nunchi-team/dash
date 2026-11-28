@@ -97,6 +97,7 @@ body { background: var(--color-bg); color: var(--color-fg); font-family: var(--f
 #dash-root .mb .mgr button.fold.top { margin-top: 0; }
 #dash-root .mb .mgr .mg.open { background: var(--color-bg); margin-inline: calc(-1 * var(--cds-pad-sm)); padding-inline: var(--cds-pad-sm); border-radius: var(--cds-radius); }
 #dash-root .mb .btns { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cds-gap-sm); }
+#dash-root .mb .kb[hidden] { display: none; }
 #dash-root .mb .kb { font: inherit; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background: var(--color-bg); color: var(--color-fg); cursor: pointer; min-width: 0; }
 #dash-root .mb .kb.wide { grid-column: 1 / -1; }
 #dash-root .mb .kb .l { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
@@ -153,7 +154,7 @@ body { background: var(--color-bg); color: var(--color-fg); font-family: var(--f
 #dash-root .mb button.fold, #dash-root .mb .blist button.fold, #dash-root .mb .mgr button.fold { border-radius: 999px; }
 #dash-root .mb a.full { border-radius: 999px; background: var(--color-fg); color: var(--color-bg); border: 0; }
 #dash-root .mb .yl i { border-radius: 50%; }
-html.nn-locked #calls, html.nn-locked #dash-root .mb .kb[data-list] { pointer-events: none; }
+html.nn-locked #calls, html.nn-locked #kb-cord, html.nn-locked #dash-root .mb .kb[data-list] { pointer-events: none; }
 html:not(.nn-locked) #nn-lockhint { display: none; }
 </style><style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style></head><body>
 <div id="dash-root">
@@ -221,6 +222,7 @@ html:not(.nn-locked) #nn-lockhint { display: none; }
       <button type="button" class="kb" data-list="risk" aria-pressed="false"><span class="l">Зона риска</span><span class="v down" data-draw="v" data-source="wk" data-row="0" data-field="at_risk" data-fmt="int">—</span><span class="s">31–60 дней без заказа · список ▾</span></button>
       <button type="button" class="kb" data-list="came" aria-pressed="false"><span class="l">Пришли за неделю</span><span class="v up" data-draw="v" data-source="wk" data-row="0" data-field="came" data-fmt="int">—</span><span class="s">новые и вернувшиеся · список ▾</span></button>
       <button type="button" class="kb" data-list="lost" aria-pressed="false"><span class="l">Ушли за неделю</span><span class="v down" data-draw="v" data-source="wk" data-row="0" data-field="lost" data-fmt="int">—</span><span class="s">60 дней без заказа · список ▾</span></button>
+      <button type="button" class="kb wide" id="kb-cord" data-draw="cordtile" aria-pressed="false" hidden></button>
     </div>
     <div class="blist" data-draw="baselist" data-source="base_lists points_years"></div>
     <h2 class="sp">Сколько точек заказывают</h2>
@@ -414,6 +416,15 @@ window.__D = {"weekly":[{"week":"2025-12-29","week_end":"2026-01-04","orders":"2
   let bl = '';
   const setBl = (v) => { bl = v; window.__blNoc = false; document.querySelectorAll('#dash-root .mb .kb[data-list]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.list === bl))); dash.draw('baselist'); };
   document.querySelectorAll('#dash-root .mb .kb[data-list]').forEach((b) => b.addEventListener('click', () => setBl(bl === b.dataset.list ? '' : b.dataset.list)));
+  dash.draw('cordtile', (el) => {
+    const d = dash.data('base_lists'); const rows = d.status === 'ok' ? d.data.filter((r) => r.list === 'active' && (!window.__vis || window.__vis(r.manager))) : [];
+    if (!rows.some((r) => r.cordial)) { el.hidden = true; return; }
+    const n = rows.length, y = rows.filter((r) => r.cordial === 'Да').length, no = rows.filter((r) => r.cordial === 'Нет').length;
+    el.hidden = false; el.replaceChildren();
+    const mk = (c, t) => { const x = document.createElement('span'); x.className = c; x.textContent = t; return x; };
+    el.append(mk('l', 'Берут кордиал'), mk('v', Math.round(100 * y / (n || 1)) + '%'), mk('s', nf0.format(y) + ' из ' + nf0.format(n) + ' активных · без кордиала ' + nf0.format(no) + ' · список ▾'));
+  });
+  document.getElementById('kb-cord').addEventListener('click', () => { if (bl === 'active' && window.__blNoc) { setBl(''); } else { setBl('active'); window.__blNoc = true; dash.draw('baselist'); } document.getElementById('kb-cord').setAttribute('aria-pressed', String(bl === 'active' && !!window.__blNoc)); });
   dash.draw('baselist', (el) => {
     el.replaceChildren(); if (!bl) return;
     let items;
