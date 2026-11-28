@@ -188,7 +188,8 @@ def compute(orders, clients, emps, today, cord=None):
 
     # ---- по неделям 2026 ----
     weekly = []
-    ws = YEAR0
+    jan1 = dt.date(today.year, 1, 1)
+    ws = jan1 - dt.timedelta(days=jan1.weekday())   # понедельник недели, в которую входит 1 января
     while ws <= today:
         we_full = ws + dt.timedelta(days=6)
         we = min(we_full, today)
@@ -311,6 +312,10 @@ def build_html(data, stamp):
     sec = sec.replace('__SIGN__', stamp.get('sign', '')).replace('__STAMP__', stamp.get('stamp', ''))
     marker = '<section class="card kick" id="kick">'
     assert tpl.count(marker) == 1, 'в шаблоне нет блока «Пинок недели»'
+    yr = int(data.get('year') or dt.date.today().year)
+    def _yr(t):   # подписи с годом в шаблоне — по году данных: в 2027 году сам станет «2027» и сравнение с 2026
+        return '\n'.join(l if (l.startswith('!function') or 'window.__D = ' in l) else l.replace('2026', '\x01').replace('2025', str(yr - 1)).replace('\x01', str(yr)) for l in t.split('\n'))
+    tpl = _yr(tpl)
     tpl = tpl.replace(marker, sec + '\n  ' + marker)
     tpl, nk = re.subn(r'<section class="card kick" id="kick">.*?</section>\s*', '', tpl, count=1, flags=re.S)  # «Пинок недели» убран
     assert nk == 1, 'не нашёл блок «Пинок недели» для удаления'

@@ -209,7 +209,7 @@ html:not(.nn-locked) #nn-lockhint { display: none; }
     <div class="yearbox" id="yearbox" hidden>
       <div class="yl"><span><i class="y26"></i>2026</span><span><i class="y25"></i>2025</span></div>
       <div class="col" data-draw="months" data-source="months"></div>
-      <p class="note">Сколько разных точек заказали в каждом месяце. Октябрь 2026 — по 30 число.</p>
+      <p class="note">Сколько разных точек заказали в каждом месяце. Последний месяц — по сегодняшний день.</p>
     </div>
   </section>
 
@@ -422,7 +422,12 @@ window.__D = {"weekly":[{"week":"2025-12-29","week_end":"2026-01-04","orders":"2
     const n = rows.length, y = rows.filter((r) => r.cordial === 'Да').length, no = rows.filter((r) => r.cordial === 'Нет').length;
     el.hidden = false; el.replaceChildren();
     const mk = (c, t) => { const x = document.createElement('span'); x.className = c; x.textContent = t; return x; };
-    el.append(mk('l', 'Берут кордиал'), mk('v', Math.round(100 * y / (n || 1)) + '%'), mk('s', nf0.format(y) + ' из ' + nf0.format(n) + ' активных · без кордиала ' + nf0.format(no) + ' · список ▾'));
+    const pd = dash.data('points_years'); const yr = String(window.__D.year || '2026');
+    const all = pd.status === 'ok' ? pd.data.filter((r) => String(r.year) === yr && (!window.__vis || window.__vis(r.manager))) : [];
+    const ay = all.filter((r) => r.cordial === 'Да').length;
+    el.append(mk('l', 'Берут кордиал · из активных'), mk('v', Math.round(100 * y / (n || 1)) + '%'),
+      mk('s', nf0.format(y) + ' из ' + nf0.format(n) + ' активных · без кордиала ' + nf0.format(no)),
+      mk('s', 'Из всей базы ' + yr + ': ' + Math.round(100 * ay / (all.length || 1)) + '% (' + nf0.format(ay) + ' из ' + nf0.format(all.length) + ') · список ▾'));
   });
   document.getElementById('kb-cord').addEventListener('click', () => { if (bl === 'active' && window.__blNoc) { setBl(''); } else { setBl('active'); window.__blNoc = true; dash.draw('baselist'); } document.getElementById('kb-cord').setAttribute('aria-pressed', String(bl === 'active' && !!window.__blNoc)); });
   dash.draw('baselist', (el) => {
