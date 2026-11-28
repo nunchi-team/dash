@@ -101,5 +101,6 @@
   "lost": 7,
   "came": 5
  },
- "at": "28.11.2026 12:41"
+ "cordial_error": "хостинг не ответил: HTTPError HTTP Error 400: Bad Request",
+ "at": "28.11.2026 13:59"
 }
